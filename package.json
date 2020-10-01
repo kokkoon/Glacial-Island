@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node worker.js"
+    "start": "nf start"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bull": "^3.18.0",
+    "bull-arena": "^3.2.2",
     "express": "^4.17.1",
     "foreman": "^3.0.1",
     "moment": "^2.29.0",
