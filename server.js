@@ -3,7 +3,7 @@ const Bull = require('bull');
 const GUI = require('bull-arena');
 const keys = require('./config/keys');
 
-const PORT = '5005'; //process.env.PORT || '5001';
+const PORT = process.env.PORT || '5005';
 const REDIS_URL = process.env.REDIS_URL || keys.redisURL
 
 const queueDashboard = GUI({
