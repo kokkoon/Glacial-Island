@@ -1,9 +1,11 @@
-const express = require('express');
+//replaced server.js
+
+const express = require("express");
+const app = express();
 const Bull = require('bull');
 const GUI = require('bull-arena');
 const keys = require('./config/keys');
 
-const PORT = process.env.PORT || '6000';
 const REDIS_URL = process.env.REDIS_URL || keys.redisURL
 
 const queueDashboard = GUI({
@@ -35,14 +37,20 @@ const queueDashboard = GUI({
 	disableListen: true
 });
 
-let app = express();
+require('./routes/jobRoutes')(app);
 
 app.use('/queue_dashboard', queueDashboard);
 
-let scheduleQueue = new Bull('SCHEDULE', REDIS_URL);
 
-scheduleQueue.on('global:completed', (jobId, result) => {
-    console.log(`Job completed with result ${result}`);
-  });
+const PORT = process.env.PORT || '4000';
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
+})
+
+
+
+
+
+
+
   
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

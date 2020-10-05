@@ -1,0 +1,113 @@
+{
+    "_id": {
+        "$oid": "5cf5e5e2fb6fc01bf240f8d3"
+    },
+    "name": "my simple workflow",
+    "description": "Sample workflow definition for testing",
+    "isPublished": true,
+    "definition": {
+        "variables": {
+            "IntegerVar": 4 ,
+            "DaysVar": ["Monday", "Tuesday", "Wednesday"]
+        },
+        "actions": [
+            {
+                "title": "Add 1 to IntegerVar",
+                "name": "Add",
+                "type": "function",
+                "mode": "sync/wait",
+                "task": {"IntegerVar": "@Sum(variables.IntegerVar, 1)"}
+            },
+            {
+                "title": "Check if day is in the list",
+                "name": "Contains",
+                "type": "function",
+                "mode": "sync/wait",
+                "task": {"dayInList": "@contains(DaysVar, 'Monday')"} 
+            },
+            {
+                "title": "If_else action",
+                "name": "IF_ELSE",
+                "type": "logic",
+                "mode": "na",
+                "rules": {"and": [
+                            {"<": [{"var": "IntegerVar"}, 10]},
+                            {"in": ["Friday", {"var": "DaysVar"}]}
+                        ]},
+                "data": "variables",
+                "branches": [
+                    {
+                        "condition": false,
+                        "actions": [
+                            {
+                                "title": "false branch Action 1",
+                                "name": "Log_message",
+                                "type": "function",
+                                "mode": "async/no-wait",
+                                "task": {"":"@Log(`executing action ${this.title}`)"}
+                            },
+                            {
+                                "title": "false branch Action 2",
+                                "name": "Send Email",
+                                "type": "service",
+                                "mode": "async/no-wait",
+                                "task": {"service":"Send Email", "params":{"to":"kkgan@live.com", "subject":"failed", "body":"test"}}
+                            }
+                        ]
+                    },
+                    {
+                        "condition": true,
+                        "actions": [
+                            {
+                                "title": "true branch Action 1",
+                                "name": "Log_message",
+                                "type": "function",
+                                "mode": "async/no-wait",
+                                "task": {"":"@Log(`executing action ${this.title}`)"}
+                            },
+                            {
+                                "title": "true branch Action 2",
+                                "name": "Send Email",
+                                "type": "service",
+                                "mode": "async/no-wait",
+                                "task": {"service":"Send Email", "params":{"to":"kkgan@live.com", "subject":"passed", "body":"test passed"}}
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "Ask for approval",
+                "name": "Approval",
+                "type": "get_response",
+                "mode": "pause-resume",
+                "task": {}
+            },
+            {
+                "title": "final task to perform",
+                "name": "Log_message",
+                "type": "function",
+                "mode": "async/no-wait",
+                "task": {"":"@Log(`this is last action ${this.title}`)"}
+            }
+        ]
+    },
+    "author": {
+        "id": "auth|0599e5d02eae2ff5fca1e2a16",
+        "email": "jason@email.com",
+        "externalID": "jason@email.com"
+    },
+    "permissions": [
+        {
+            "name": "Jason Tang",
+            "id": "auth|0599e5d02eae2ff5fca1e2a16",
+            "type": "user",
+            "access": [
+                "read",
+                "write",
+                "Update",
+                "delete"
+            ]
+        }
+    ]
+}

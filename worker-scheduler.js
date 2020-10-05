@@ -7,14 +7,14 @@ const moment = require('moment');
 
 const workers = process.env.WEB_CONCURRENCY || 2;
 
-const maxJobsPerWorker = 50;
+const maxJobsPerWorker = 5;
 
 function start() {
     const scheduleQueue = new Bull(QUEUE_NAME, REDIS_URL);
 
     scheduleQueue.process(maxJobsPerWorker, async (job) => {
         console.log(job.data)
-        var log = (moment()) + `schedule job started...`;
+        var log = (moment().format("MMM Do YYYY, h:mm a")) + `: Scheduled job started...`;
         job.log(log);
         return { value: "job done"}
     })
