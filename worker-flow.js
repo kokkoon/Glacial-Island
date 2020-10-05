@@ -6,9 +6,9 @@ const REDIS_URL = process.env.REDIS_URL || keys.redisURL;
 const orchestrator = require('./services/orchstrator');
 const moment = require('moment');
 
-const workers = process.env.WEB_CONCURRENCY || 2;
+const workers = process.env.WEB_CONCURRENCY || 1;
 
-const maxJobsPerWorker = 5;
+const maxJobsPerWorker = 1;
 
 function start() {
     const flowQueue = new Bull(QUEUE_NAME, REDIS_URL);

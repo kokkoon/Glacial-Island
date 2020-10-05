@@ -6,7 +6,7 @@ const Bull = require('bull');
 const GUI = require('bull-arena');
 const keys = require('./config/keys');
 
-const REDIS_URL = process.env.REDIS_URL || keys.redisURL
+const serviceWorker = require('./worker-service');
 
 const queueDashboard = GUI({
     Bull,
