@@ -30,7 +30,12 @@ const queueDashboard = GUI({
 			name: "SCHEDULE",
 			hostId: "flow",
 			url: keys.redisURL 
-		}
+		},
+		{
+			name: "SCHEDULE@DESKTOP-HO2F260",
+			hostId: "flow",
+			url: keys.redisURL 
+        }
 	]
 }, {
 	basePath: "/",
