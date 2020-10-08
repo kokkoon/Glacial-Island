@@ -35,6 +35,16 @@ const queueDashboard = GUI({
 			name: "SCHEDULE@DESKTOP-HO2F260",
 			hostId: "flow",
 			url: keys.redisURL 
+        },
+		{
+			name: "SCHEDULE-DESKTOP-HO2F260",
+			hostId: "flow",
+			url: keys.redisURL 
+        },
+		{
+			name: "SCHEDULE@ip-10-0-0-155.ap-southeast-1.compute.internal",
+			hostId: "flow",
+			url: keys.redisURL 
         }
 	]
 }, {
