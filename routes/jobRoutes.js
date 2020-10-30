@@ -19,14 +19,14 @@ module.exports = app => {
 	flowQueue.add(jobDefinition)
 	.then(result => {
 		console.log("jobId:", result.id, "jobState:", result.getState())
-		res.send(result, "jobState:", result.getState())
+		res.json({"status": true, "data": result, "status_code": 200})
 		}, error => {
 		console.log("error:", error)
-		res.send(error)
+		res.json({ "status": false, "message": error.message, "status_code": 401 });
 		})
 	.catch(alert => {
 		console.log("alert:", alert)
-		res.send(alert)
+		res.json({ "status": false, "message": alert.message, "status_code": 401 });
 	})
 
   })
@@ -99,4 +99,23 @@ module.exports = app => {
 
   })
 
+  app.get('/instances/:flowId', function(req, res) {
+	const flowId = req.params.flowId;
+	flowQueue.getJobs(['completed','active','waiting'], 0, 4)
+		.then(result => {
+				console.log(result.length)
+				result1 = result.filter(obj => { console.log(obj.data._id); return obj.data._id === flowId });
+				console.log(result1)
+				res.json({"status": true, "data": result1, "status_code": 200});
+			}, error => {
+				console.log("error:", error);
+				res.json({ "status": false, "message": error.message, "status_code": 401 });
+			})
+		.catch(alert => {
+			console.log("(ops!)alert:", alert);
+			res.json({ "status": false, "message": alert.message, "status_code": 401 });
+		})
+  })
+
 }
+
