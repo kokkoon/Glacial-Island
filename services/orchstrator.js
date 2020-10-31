@@ -26,7 +26,7 @@ var exec1 = async (job, actions) => {
           level=level+1;
           currentNode = {...first};
           var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-          job.log(logObj)
+          job.log(JSON.stringify(logObj))
           console.log(job.data.definition[first.data]);
           if (jsonLogic.apply(first.rules, job.data.definition[first.data])) {
             await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
@@ -44,9 +44,8 @@ var exec1 = async (job, actions) => {
     } else if (first.taskType =="get-response") {
       // start executing task
       var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-      var loginst = (moment()) + `: Started ${first.name}, ${first.title}`;
-      console.log(actions.length, loginst);
-      job.log(logObj);
+      console.log(actions.length, JSON.stringify(logObj));
+      job.log(JSON.stringify(logObj));
 
       //assign a task and pause..
       job.data.state = "Paused";
@@ -62,9 +61,9 @@ var exec1 = async (job, actions) => {
 
       // start executing task
       //var loginst = (moment()) + `: Started ${first.name}, ${first.title}`;
-      var loginst = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-      console.log(actions.length, loginst);
-      job.log(JSON.stringify(loginst));
+      var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
+      console.log(actions.length, JSON.stringify(logObj));
+      job.log(JSON.stringify(logObj));
 
       switch (first.taskType) {
         case "service":
@@ -87,9 +86,9 @@ var exec1 = async (job, actions) => {
       
       //finish doing task..
       //loginst = (moment()) + `: Ended ${first.name}, ${first.title}`;
-      loginst = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
-      console.log(actions.length, JSON.stringify(loginst));
-      job.log(JSON.stringify(loginst));
+      logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
+      console.log(actions.length, JSON.stringify(logObj));
+      job.log(JSON.stringify(logObj));
 
     }
     await exec1(job, actions);
@@ -99,10 +98,10 @@ var exec1 = async (job, actions) => {
     if (level < 1) {
       job.data.state = "Completed";
       job.update(job.data);
-      logObj = {timestamp: moment(), status: "Completed", activity: first.configuration.actionTitle, log: `Completes ${first.configuration.actionTitle}`};
-      job.log("Workflow completed")
+      var logObj = {timestamp: moment(), status: "Completed", activity: first.configuration.actionTitle, log: `Completes ${first.configuration.actionTitle}`};
+      job.log(JSON.stringify(logObj))
     } else {
-      logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+      var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
       job.log(JSON.stringify(logObj));
       level = level -1;
     };
