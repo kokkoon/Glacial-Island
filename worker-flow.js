@@ -14,9 +14,10 @@ function start() {
     const flowQueue = new Bull(QUEUE_NAME, REDIS_URL);
 
     flowQueue.process(maxJobsPerWorker, async (job) => {
+        var logObj = {timestamp: moment(), status: "Start", activity: "Start workflow", log: "Workflow orchestration started"};
         console.log(job.data)
-        var log = (moment().format("MMM Do YYYY, h:mm a")) + `: Orchestration job started...`;
-        job.log(log);
+        //var log = (moment().format("MMM Do YYYY, h:mm a")) + `: Orchestration job started...`;
+        job.log(JSON.stringify(logObj));
 
         // Start orchestration job
         orchestrator.startflow(job)
