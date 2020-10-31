@@ -16,6 +16,7 @@ module.exports = app => {
 	const mode = url.query.mode;
 	const jobDefinition = (mode && mode === "test")?sample_flow_definition: req.body;
 	console.log("Posting ", (mode && mode === "test")? "sample flow definition": "flow definition");
+	jobDefinition.name = jobDefinition.workflowName;
 	flowQueue.add(jobDefinition)
 	.then(result => {
 		console.log("jobId:", result.id, "jobState:", result.getState())
