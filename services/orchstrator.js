@@ -20,8 +20,8 @@ var exec1 = async (job, actions) => {
   if (actions.length > 0) {
     const first = actions.shift();
 
-    if (first.dataType == "logic") {
-      switch (first.name) {
+    if (first.taskType == "logic") {
+      switch (first.configuration.actionName) {
         case "IF_ELSE":
           level=level+1;
           currentNode = {...first};
@@ -41,7 +41,7 @@ var exec1 = async (job, actions) => {
         default:
           break
       }
-    } else if (first.dataType =="get-response") {
+    } else if (first.taskType =="get-response") {
       // start executing task
       var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
       var loginst = (moment()) + `: Started ${first.name}, ${first.title}`;
@@ -66,7 +66,7 @@ var exec1 = async (job, actions) => {
       console.log(actions.length, loginst);
       job.log(JSON.stringify(loginst));
 
-      switch (first.dataType) {
+      switch (first.taskType) {
         case "service":
           console.log("Execute service");
           //serviceQueue.add(first)
