@@ -17,6 +17,7 @@ module.exports = app => {
 	const jobDefinition = (mode && mode === "test")?sample_flow_definition: req.body;
 	console.log("Posting ", (mode && mode === "test")? "sample flow definition": "flow definition");
 	jobDefinition.name = jobDefinition.workflowName;
+	jobDefinition.state = "Queued";
 	flowQueue.add(jobDefinition)
 	.then(result => {
 		console.log("jobId:", result.id, "jobState:", result.getState())
@@ -102,11 +103,11 @@ module.exports = app => {
 
   app.get('/instances/:flowId', function(req, res) {
 	const flowId = req.params.flowId;
-	flowQueue.getJobs(['completed','active','waiting'], 0, 4)
+	flowQueue.getJobs(['completed','active','waiting'], 0, 100)
 		.then(result => {
-				console.log(result.length)
+				console.log("All instances:", result.length)
 				result1 = result.filter(obj => { console.log(obj.data._id); return obj.data._id === flowId });
-				console.log(result1)
+				console.log(`Instance of ${flowId}`,result1.length)
 				res.json({"status": true, "data": result1, "status_code": 200});
 			}, error => {
 				console.log("error:", error);

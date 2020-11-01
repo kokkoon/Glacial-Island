@@ -19,16 +19,21 @@ var currentNode = {};
 var exec1 = async (job, actions) => {
   if (actions.length > 0) {
     const first = actions.shift();
+    console.log("line 22", first.taskType, first.configuration.actionName)
+    
+    var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
+    console.log(actions.length, JSON.stringify(logObj))
+    job.log(JSON.stringify(logObj))
 
     if (first.taskType == "logic") {
       switch (first.configuration.actionName) {
         case "IF_ELSE":
           level=level+1;
           currentNode = {...first};
-          var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-          job.log(JSON.stringify(logObj))
-          console.log(job.data.definition[first.data]);
-          if (jsonLogic.apply(first.rules, job.data.definition[first.data])) {
+          //var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
+          //job.log(JSON.stringify(logObj))
+          //console.log(job.data.definition["variables"]);
+          if (first.rules && jsonLogic.apply(first.rules, job.data.definition["variables"])) {
             await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
           } else {
             await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
@@ -43,9 +48,9 @@ var exec1 = async (job, actions) => {
       }
     } else if (first.taskType =="get-response") {
       // start executing task
-      var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-      console.log(actions.length, JSON.stringify(logObj));
-      job.log(JSON.stringify(logObj));
+      //var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
+      //console.log(actions.length, JSON.stringify(logObj));
+      //job.log(JSON.stringify(logObj));
 
       //assign a task and pause..
       job.data.state = "Paused";
@@ -61,9 +66,9 @@ var exec1 = async (job, actions) => {
 
       // start executing task
       //var loginst = (moment()) + `: Started ${first.name}, ${first.title}`;
-      var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-      console.log(actions.length, JSON.stringify(logObj));
-      job.log(JSON.stringify(logObj));
+      //var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
+      //console.log(actions.length, JSON.stringify(logObj));
+      //job.log(JSON.stringify(logObj));
 
       switch (first.taskType) {
         case "service":
@@ -71,9 +76,10 @@ var exec1 = async (job, actions) => {
           //serviceQueue.add(first)
           //  .then(job => {console.log("jobId:", job.id)})
           //  .catch(alert => {console.log("alert:", alert)})
-          let serviceJob = await serviceQueue.add(first);
-          let result = await serviceJob.finished();
-          console.log(result)
+
+          //let serviceJob = await serviceQueue.add(first);
+          //let result = await serviceJob.finished();
+          //console.log(result)
 
           break
         default:
@@ -91,14 +97,24 @@ var exec1 = async (job, actions) => {
       job.log(JSON.stringify(logObj));
 
     }
-    await exec1(job, actions);
-    
-    return "active";
+    if (actions.length>0) { 
+      console.log("ending.... >0")
+      await exec1(job, actions)
+    } else {
+      console.log("ending.... =0")
+      job.data.state = "Completed";
+      job.update(job.data);
+      var logObj = {timestamp: moment(), status: "Completed", activity: "End workflow", log: "Workflow orchestration completed"};
+      console.log(actions.length, JSON.stringify(logObj));
+      job.log(JSON.stringify(logObj))
+      return "completed"
+    };
   } else {
     if (level < 1) {
       job.data.state = "Completed";
       job.update(job.data);
-      var logObj = {timestamp: moment(), status: "Completed", activity: first.configuration.actionTitle, log: `Completes ${first.configuration.actionTitle}`};
+      var logObj = {timestamp: moment(), status: "Completed", activity: "End workflow", log: "Workflow orchestration completed"};
+      console.log(actions.length, JSON.stringify(logObj));
       job.log(JSON.stringify(logObj))
     } else {
       var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};

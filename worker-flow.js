@@ -15,7 +15,7 @@ function start() {
 
     flowQueue.process(maxJobsPerWorker, async (job) => {
         var logObj = {timestamp: moment(), status: "Start", activity: "Start workflow", log: "Workflow orchestration started"};
-        console.log(job.data)
+        console.log(job.data.definition.actions.length, JSON.stringify(logObj))
         //var log = (moment().format("MMM Do YYYY, h:mm a")) + `: Orchestration job started...`;
         job.log(JSON.stringify(logObj));
 
