@@ -75,7 +75,7 @@ module.exports = app => {
 		})
   })
 
-  app.post('/resumejob/:jobId', async function(req, res) {
+  app.post('/resumejob/:jobId/:outcome', async function(req, res) {
 	const jobId = req.params.jobId;
 	const job = await flowQueue.getJob(jobId);
 	if (job.data.state !== "Paused") {
@@ -83,6 +83,7 @@ module.exports = app => {
 		return;
 	}
 	const jobData = {...job.data};
+	jobData.definition.actions[0].configuration.properties.outcome = req.params.outcome;
 	flowQueue.getJobLogs(jobId)
 		.then(logs => {
 			const jobLogs = {...logs}
@@ -117,6 +118,10 @@ module.exports = app => {
 			console.log("(ops!)alert:", alert);
 			res.json({ "status": false, "message": alert.message, "status_code": 401 });
 		})
+  })
+
+  app.post('/sms/reply', function(req, res) {
+	  console.log(req)
   })
 
 }

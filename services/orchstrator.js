@@ -38,56 +38,64 @@ var exec1 = async (job, actions) => {
           } else {
             await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
           }
+          //log exit if_else branch here..
+          var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+          console.log(actions.length, JSON.stringify(logObj));
+          job.log(JSON.stringify(logObj));
+          level = level -1;
           break
         case "RUN_IF":
           break
         case "WHILE":
+          while (first.rules && jsonLogic.apply(first.rules, job.data.definition["variables"])) {
+            await exac1(job, first.branches[0].actions)
+          }
+          var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+          console.log(actions.length, JSON.stringify(logObj));
+          job.log(JSON.stringify(logObj));
           break
         default:
           break
       }
     } else if (first.taskType =="get-response") {
-      // start executing task
-      //var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-      //console.log(actions.length, JSON.stringify(logObj));
-      //job.log(JSON.stringify(logObj));
 
       //assign a task and pause..
-      job.data.state = "Paused";
-      job.update(job.data);
-      
-      //finish doing task..
-      //loginst = (moment()) + `: Waiting ${first.name}, ${first.title}`;
-      logObj = {timestamp: moment(), status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${first.configuration.actionTitle}`};
+      if (job.data.state !== "Paused" ) {
+        job.data.state = "Paused";
+        actions.unshift(first);
+        job.update(job.data);
+        
+        logObj = {timestamp: moment(), status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${first.configuration.actionTitle}`};
+        console.log(actions.length, JSON.stringify(logObj));
+        job.log(JSON.stringify(logObj));
+
+        return "Paused"
+      } else {
+        console.log(first.configuration.properties.outcome)
+        if (true) {
+          await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
+        } else {
+          await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+        }
+      }
+    } else if (first.taskType == "service") {
+      console.log("Execute service");
+      //serviceQueue.add(first)
+      //  .then(job => {console.log("jobId:", job.id)})
+      //  .catch(alert => {console.log("alert:", alert)})
+
+      //let serviceJob = await serviceQueue.add(first);
+      //let result = await serviceJob.finished();
+      //console.log(result)
+      logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
       console.log(actions.length, JSON.stringify(logObj));
       job.log(JSON.stringify(logObj));
-      return "Paused"
     } else {
 
-      // start executing task
-      //var loginst = (moment()) + `: Started ${first.name}, ${first.title}`;
-      //var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-      //console.log(actions.length, JSON.stringify(logObj));
-      //job.log(JSON.stringify(logObj));
-
-      switch (first.taskType) {
-        case "service":
-          console.log("Execute service");
-          //serviceQueue.add(first)
-          //  .then(job => {console.log("jobId:", job.id)})
-          //  .catch(alert => {console.log("alert:", alert)})
-
-          //let serviceJob = await serviceQueue.add(first);
-          //let result = await serviceJob.finished();
-          //console.log(result)
-
-          break
-        default:
-          console.log("Execute doFunction");
-          // do task execution
-          await doFunction(job, first)
-          break
-      }
+      
+      console.log("Execute doFunction");
+      // do task execution
+      await doFunction(job, first);
      
       
       //finish doing task..
@@ -97,38 +105,23 @@ var exec1 = async (job, actions) => {
       job.log(JSON.stringify(logObj));
 
     }
-    if (actions.length>0) { 
-      console.log("ending.... >0")
-      await exec1(job, actions)
-    } else {
-      console.log("ending.... =0")
-      job.data.state = "Completed";
-      job.update(job.data);
-      var logObj = {timestamp: moment(), status: "Completed", activity: "End workflow", log: "Workflow orchestration completed"};
-      console.log(actions.length, JSON.stringify(logObj));
-      job.log(JSON.stringify(logObj))
-      return "completed"
-    };
   } else {
-    if (level < 1) {
-      job.data.state = "Completed";
-      job.update(job.data);
-      var logObj = {timestamp: moment(), status: "Completed", activity: "End workflow", log: "Workflow orchestration completed"};
-      console.log(actions.length, JSON.stringify(logObj));
-      job.log(JSON.stringify(logObj))
-    } else {
-      var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
-      job.log(JSON.stringify(logObj));
-      level = level -1;
-    };
-    return "done";
+    return "Completed";
   }
+  return await exec1(job, actions)
+
 }
 
 var startflow = async (job) => {
-  job.data.state = "Active";
+  if (!job.data.state) job.data.state = "Active";
   await job.update(job.data);
-  exec1(job, job.data.definition.actions);
+  var state = await exec1(job, job.data.definition.actions);
+  console.log(state)
+  job.data.state = state;
+  job.update(job.data);
+      var logObj = {timestamp: moment(), status: state, activity: "End workflow", log: "Workflow orchestration " + state };
+      console.log(JSON.stringify(logObj));
+      job.log(JSON.stringify(logObj))
 }
 
 module.exports = {
