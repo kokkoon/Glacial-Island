@@ -53,9 +53,9 @@ const queueDashboard = GUI({
 	disableListen: true
 });
 
+app.use(session({secret:'anyt-string-but-to-keep-secret'}));
 require('./routes/jobRoutes')(app);
 
-app.use(session({secret:'anyt-string-but-to-keep-secret'}));
 
 app.use('/queue_dashboard', queueDashboard);
 
