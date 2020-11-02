@@ -121,7 +121,11 @@ module.exports = app => {
   })
 
   app.post('/sms/reply', function(req, res) {
-	  console.log(req.headers, req.body)
+	  const smsCount = req.session.counter || 0;
+
+	  req.session.counter = smsCount + 1;
+
+	  console.log(req.headers, req.body, req.session, req.cookies.get())
 	  res.json({"status":true, "messag": "Success", "status_code": 200})
   })
 

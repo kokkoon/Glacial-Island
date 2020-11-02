@@ -7,6 +7,8 @@ const QUEUE_NAME = "SERVICE";
 const REDIS_URL = keys.redisURL;
 const serviceQueue = new Bull(QUEUE_NAME, REDIS_URL);
 const moment = require('moment');
+const twilio = require('twilio');
+const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
 
 const doFunction = (job, node) => {
   new Promise(res => setTimeout(res, 2000))
@@ -61,6 +63,20 @@ var exec1 = async (job, actions) => {
 
       //assign a task and pause..
       if (job.data.state !== "Paused" ) {
+        var promise = client.messages.create({
+            from: 'whatsapp:+14155238886',
+            body: 'Please reply approve/reject',
+            to: 'whatsapp:+6583327738'
+          });
+
+        promise.then(message => {
+            console.log(message.sid)
+            job.data.messageSID = message.sid;
+            job.update(job.data);
+          }, error => {
+            console.error(error.message)
+          });
+
         job.data.state = "Paused";
         actions.unshift(first);
         job.update(job.data);

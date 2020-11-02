@@ -13,10 +13,12 @@
     "bull": "^3.18.0",
     "bull-arena": "^3.2.2",
     "express": "^4.17.1",
+    "express-session": "^1.17.1",
     "foreman": "^3.0.1",
     "json-logic-js": "^1.2.2",
     "jsonpath": "^1.0.2",
     "moment": "^2.29.0",
-    "throng": "^5.0.0"
+    "throng": "^5.0.0",
+    "twilio": "^3.50.0"
   }
 }

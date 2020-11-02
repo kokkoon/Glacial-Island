@@ -1,6 +1,7 @@
 //replaced server.js
 
 const express = require("express");
+const session = require("express-session");
 const app = express();
 const Bull = require('bull');
 const GUI = require('bull-arena');
@@ -53,6 +54,8 @@ const queueDashboard = GUI({
 });
 
 require('./routes/jobRoutes')(app);
+
+app.use(session({secret:'anyt-string-but-to-keep-secret'}));
 
 app.use('/queue_dashboard', queueDashboard);
 
