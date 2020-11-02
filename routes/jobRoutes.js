@@ -125,7 +125,7 @@ module.exports = app => {
 
 	  req.session.counter = smsCount + 1;
 
-	  console.log(req.headers, req.body, req.session, req.cookies.get())
+	  console.log(req.headers, req.body, req.session, req.cookies)
 	  res.json({"status":true, "messag": "Success", "status_code": 200})
   })
 
