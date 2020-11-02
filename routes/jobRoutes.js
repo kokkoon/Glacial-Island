@@ -121,7 +121,8 @@ module.exports = app => {
   })
 
   app.post('/sms/reply', function(req, res) {
-	  console.log(req)
+	  console.log(req.headers, req.body)
+	  res.json({"status":true, "messag": "Success", "status_code": 200})
   })
 
 }
