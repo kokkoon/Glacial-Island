@@ -64,7 +64,7 @@ module.exports = app => {
 	  flowQueue.getJobLogs(jobId, start, end)
 	  	.then(logs => {
 			  console.log(`jobLogs(${jobId}?${start}&${end}):`, logs)
-			  res.send(logs);
+			  res.json(logs);
 		  }, error => {
 			console.log("(ops!)error:", error)
 			res.send(error)

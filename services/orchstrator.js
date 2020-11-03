@@ -93,6 +93,10 @@ var exec1 = async (job, actions) => {
         } else {
           await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
         }
+        
+        logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
+        console.log(actions.length, JSON.stringify(logObj));
+        job.log(JSON.stringify(logObj));
       }
     } else if (first.taskType == "service") {
       console.log("Execute service");
@@ -129,15 +133,14 @@ var exec1 = async (job, actions) => {
 }
 
 var startflow = async (job) => {
-  if (!job.data.state) job.data.state = "Active";
-  await job.update(job.data);
+  // Start executing workflow actions...
   var state = await exec1(job, job.data.definition.actions);
-  console.log(state)
+
+  //Exited execution of workflow actions
   job.data.state = state;
+  job.data.jobEnd = moment();
+  if (state === "Completed") job.data.end = moment();
   job.update(job.data);
-      var logObj = {timestamp: moment(), status: state, activity: "End workflow", log: "Workflow orchestration " + state };
-      console.log(JSON.stringify(logObj));
-      job.log(JSON.stringify(logObj))
 }
 
 module.exports = {
