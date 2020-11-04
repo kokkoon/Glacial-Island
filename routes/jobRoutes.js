@@ -136,6 +136,7 @@ module.exports = app => {
 		})
 
 	  console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
+	  res.set('Content-Type', 'application/json')
 	  res.json({"status":true, "messag": "Success", "status_code": 200})
   })
 
