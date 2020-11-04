@@ -6,6 +6,7 @@ const keys = require('../config/keys');
 const sample_flow_definition = require('../config/wf-definition-example.json');
 const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 const resQueue = new Bull('RESPONSE', keys.redisURL);
+const MessagingResponse = require('twilio').twiml.MessagingResponse;
 
 
 module.exports = app => {
@@ -122,6 +123,8 @@ module.exports = app => {
   })
 
   app.post('/sms/reply', function (req, res) {
+	  const twiml = new MessagingResponse();
+	  twiml.message('Success!!');
 	  const smsCount = req.session.counter || 0;
 	  req.session.counter = smsCount + 1;
 	  console.log("BODY: ", req.body)
@@ -136,8 +139,9 @@ module.exports = app => {
 		})
 
 	  console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
-	  res.set('Content-Type', 'text/csv')
-	  res.send("200, ok")
+	  //res.set('Content-Type', 'text/xml')
+	  res.writeHead(200, {'Content-Type':'text/xml'});
+	  res.end(twml.toString());
   })
 
 }
