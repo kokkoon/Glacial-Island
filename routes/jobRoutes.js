@@ -124,7 +124,6 @@ module.exports = app => {
 
   app.post('/sms/reply', function (req, res) {
 	  const twiml = new MessagingResponse();
-	  twiml.message('Success!!');
 	  const smsCount = req.session.counter || 0;
 	  const msg = req.body.Body;
 	  req.session.counter = smsCount + 1;
@@ -133,8 +132,17 @@ module.exports = app => {
 	  resQueue.getJobs(['waiting'], 0, 100)
 	  	.then(result => {
 			result1 = result.filter(obj => {return obj.data.to === req.body.From})
-			const outcome = msg.match(/Approve/i) ? 'Approve': msg.match(/Reject/i) ? 'Reject':undefined;
-			outcome && resume(result1[0].data.instanceId, outcome)
+			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
+			if (outcome) { 
+				if (resume(result1[0].data.instanceId, outcome)) {
+					result1.moveToCompleted()
+	  				twiml.message(`Task ${outcome}`);
+				} else {
+					twiml.message(`There was no pending task to ${msg}`)
+				}
+			} else {
+				twiml.message(`Could not interprete reply: "${msg}"`)
+			} 
 		  })
 		.catch(alert => {
 			console.log("(ops!alert:", alert);
@@ -152,7 +160,7 @@ const resume = async (jobId, outcome) => {
 	const job = await flowQueue.getJob(jobId);
 	if (job.data.state !== "Paused") {
 		res.send("Only a paused job could be resumed");
-		return;
+		return false;
 	}
 	const jobData = {...job.data};
 	jobData.definition.actions[0].configuration.properties.outcome = outcome;
@@ -169,6 +177,7 @@ const resume = async (jobId, outcome) => {
 				.then(resumedJob => {
 					//res.send(resumedJob)
 					console.log(`Job ${jobId} resumed`)
+					return true
 				})
 		})
 
