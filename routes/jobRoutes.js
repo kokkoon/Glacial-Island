@@ -126,6 +126,7 @@ module.exports = app => {
 	  const twiml = new MessagingResponse();
 	  twiml.message('Success!!');
 	  const smsCount = req.session.counter || 0;
+	  const msg = req.body.Body;
 	  req.session.counter = smsCount + 1;
 	  console.log("BODY: ", req.body)
 
