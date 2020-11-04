@@ -141,7 +141,7 @@ module.exports = app => {
 	  console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
 	  //res.set('Content-Type', 'text/xml')
 	  res.writeHead(200, {'Content-Type':'text/xml'});
-	  res.end(twml.toString());
+	  res.end(twiml.toString());
   })
 
 }
