@@ -121,13 +121,13 @@ module.exports = app => {
 		})
   })
 
-  app.post('/sms/reply', function async (req, res) {
+  app.post('/sms/reply', function (req, res) {
 	  const smsCount = req.session.counter || 0;
 	  req.session.counter = smsCount + 1;
 
 	  resQueue.getJobs(['waiting'], 0, 100)
 	  	.then(result => {
-			result1 = await result.filter(obj => {return obj.data.to === req.body.From})
+			result1 = result.filter(obj => {return obj.data.to === req.body.From})
 			resume(result1[0].data.instanceId)
 		  })
 		.catch(alert => {
