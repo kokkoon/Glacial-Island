@@ -124,6 +124,7 @@ module.exports = app => {
   app.post('/sms/reply', function (req, res) {
 	  const smsCount = req.session.counter || 0;
 	  req.session.counter = smsCount + 1;
+	  console.log("BODY: ", req.body)
 
 	  resQueue.getJobs(['waiting'], 0, 100)
 	  	.then(result => {
