@@ -33,6 +33,11 @@ const queueDashboard = GUI({
 			url: keys.redisURL 
 		},
 		{
+			name: "REPONSE",
+			hostId: "flow",
+			url: keys.redisURL 
+		},
+		{
 			name: "SCHEDULE",
 			hostId: "flow",
 			url: keys.redisURL 

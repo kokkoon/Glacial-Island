@@ -5,7 +5,7 @@ const QUEUE_NAME= 'FLOW';
 const keys = require('../config/keys');
 const sample_flow_definition = require('../config/wf-definition-example.json');
 const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
-const resQueue = new Bull('REPONSE', keys.redisURL);
+const resQueue = new Bull('RESPONSE', keys.redisURL);
 
 
 module.exports = app => {
@@ -126,7 +126,7 @@ module.exports = app => {
 
 	  req.session.counter = smsCount + 1;
 
-	  console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session, "COOKIES: ", req.cookie, "PARAMS: ", req.params)
+	  console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
 	  res.json({"status":true, "messag": "Success", "status_code": 200})
   })
 
