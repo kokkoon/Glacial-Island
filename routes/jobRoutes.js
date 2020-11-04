@@ -5,6 +5,7 @@ const QUEUE_NAME= 'FLOW';
 const keys = require('../config/keys');
 const sample_flow_definition = require('../config/wf-definition-example.json');
 const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
+const resQueue = new Bull('REPONSE', keys.redisURL);
 
 
 module.exports = app => {

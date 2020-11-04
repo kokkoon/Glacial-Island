@@ -6,6 +6,7 @@ const keys = require('../config/keys');
 const QUEUE_NAME = "SERVICE";
 const REDIS_URL = keys.redisURL;
 const serviceQueue = new Bull(QUEUE_NAME, REDIS_URL);
+const resQueue = new Bull('REPONSE', REDIS_URL);
 const moment = require('moment');
 const twilio = require('twilio');
 const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
@@ -76,6 +77,23 @@ var exec1 = async (job, actions) => {
           }, error => {
             console.error(error.message)
           });
+
+        promise.then(message => {
+          resQueue.add({
+            instanceId: job.id,
+            state: job.data.state,
+            from: 'whatsapp:+14155238886',
+            to: 'whatsapp:+6583327738'
+          })
+          .then(result => {
+              console.log(result)
+            }, error => {
+            //
+            })
+          .catch(alert => {
+            console.log("alert:", alert)
+          })
+        });
 
         job.data.state = "Paused";
         actions.unshift(first);
