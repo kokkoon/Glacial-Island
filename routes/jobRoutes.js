@@ -132,7 +132,8 @@ module.exports = app => {
 	  resQueue.getJobs(['waiting'], 0, 100)
 	  	.then(result => {
 			result1 = result.filter(obj => {return obj.data.to === req.body.From})
-			resume(result1[0].data.instanceId)
+			const outcome = msg.match(/Approve/i) ? 'Approve': msg.match(/Reject/i) ? 'Reject':undefined;
+			outcome && resume(result1[0].data.instanceId, outcome)
 		  })
 		.catch(alert => {
 			console.log("(ops!alert:", alert);
@@ -146,18 +147,17 @@ module.exports = app => {
 
 }
 
-const resume = async (jobId) => {
+const resume = async (jobId, outcome) => {
 	const job = await flowQueue.getJob(jobId);
 	if (job.data.state !== "Paused") {
 		res.send("Only a paused job could be resumed");
 		return;
 	}
 	const jobData = {...job.data};
-	jobData.definition.actions[0].configuration.properties.outcome = req.params.outcome;
+	jobData.definition.actions[0].configuration.properties.outcome = outcome;
 	flowQueue.getJobLogs(jobId)
 		.then(logs => {
 			const jobLogs = {...logs}
-			console.log("jobLogs123:", jobLogs);
 			job.remove();
 			flowQueue.add(jobData, {jobId: jobId})
 				.then(resumedJob => {
@@ -166,7 +166,8 @@ const resume = async (jobId) => {
 					});
 				})
 				.then(resumedJob => {
-					res.send(resumedJob)
+					//res.send(resumedJob)
+					console.log(`Job ${jobId} resumed`)
 				})
 		})
 
