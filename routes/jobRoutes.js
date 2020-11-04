@@ -121,14 +121,48 @@ module.exports = app => {
 		})
   })
 
-  app.post('/sms/reply', function(req, res) {
+  app.post('/sms/reply', function async (req, res) {
 	  const smsCount = req.session.counter || 0;
-
 	  req.session.counter = smsCount + 1;
+
+	  resQueue.getJobs(['waiting'], 0, 100)
+	  	.then(result => {
+			result1 = await result.filter(obj => {return obj.data.to === req.body.From})
+			resume(result1[0].data.instanceId)
+		  })
+		.catch(alert => {
+			console.log("(ops!alert:", alert);
+		})
 
 	  console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
 	  res.json({"status":true, "messag": "Success", "status_code": 200})
   })
 
 }
+
+const resume = async (jobId) => {
+	const job = await flowQueue.getJob(jobId);
+	if (job.data.state !== "Paused") {
+		res.send("Only a paused job could be resumed");
+		return;
+	}
+	const jobData = {...job.data};
+	jobData.definition.actions[0].configuration.properties.outcome = req.params.outcome;
+	flowQueue.getJobLogs(jobId)
+		.then(logs => {
+			const jobLogs = {...logs}
+			console.log("jobLogs123:", jobLogs);
+			job.remove();
+			flowQueue.add(jobData, {jobId: jobId})
+				.then(resumedJob => {
+					jobLogs.logs.forEach(log => {
+						resumedJob.log(log);
+					});
+				})
+				.then(resumedJob => {
+					res.send(resumedJob)
+				})
+		})
+
+  }
 
