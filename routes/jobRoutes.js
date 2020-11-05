@@ -136,22 +136,24 @@ module.exports = app => {
 			if (waitingJob.length<1) return `There were no pending task for you`;
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			console.log("outcome", outcome)
+			var replyMsg = "";
 			if (outcome !== undefined) { 
 				resume(waitingJob[0].data.instanceId, outcome)
 					.then(ans => {
 						console.log(ans)
 						waitingJob[0].moveToCompleted('completed', true, true)
-						return `Task: ${outcome}`;
+						replyMsg = `Task: ${outcome}`;
 					}).catch(err => {
 						console.log(`Error...${err} ${msg}`)
-						return `Error... ${err}`
+						replyMsg = `Error... ${err}`
 					})
 			} else {
-				return `Failed interprete your reply: ${msg}`
+				replyMsg =  `Failed interprete your reply: ${msg}`
 			} 
+			return replyMsg;
 		})
-		.then(result =>{
-			twiml.message(result);
+		.then(replyMsg =>{
+			twiml.message(replyMsg);
 			res.writeHead(200, {'Content-Type':'text/xml'});
 			res.end(twiml.toString());
 		})
