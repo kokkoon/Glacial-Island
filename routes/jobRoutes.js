@@ -124,7 +124,7 @@ module.exports = app => {
 
   app.post('/sms/reply', function (req, res) {
 	  const twiml = new MessagingResponse();
-	  twiml.message('Success!');
+	  twiml.message('Init!');
 	  const smsCount = req.session.counter || 0;
 	  const msg = req.body.Body;
 	  req.session.counter = smsCount + 1;
@@ -149,7 +149,7 @@ module.exports = app => {
 		})
 		.catch(alert => {
 			console.log("(ops!alert:", alert);
-			twiml.message('Failed');
+			twiml.message('Failed!');
 		})
 
 	console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
