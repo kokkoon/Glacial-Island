@@ -138,14 +138,14 @@ module.exports = app => {
 			console.log("outcome", outcome)
 			if (outcome !== undefined) { 
 				var ans = resume(waitingJob[0].data.instanceId, outcome)
-					.then(ans => {
+					/*.then(ans => {
 						if (ans) {waitingJob[0].moveToCompleted('completed', true, true)
 						twiml.message(`Task ${outcome}`);} else {
 							twiml.message(`There was no pending task to ${msg}`)
 						}
 					}).catch(err => {
 						twiml.message(`There was no pending task to ${msg}`)
-					})
+					})*/
 				if (ans) {
 					waitingJob[0].moveToCompleted('completed', true, true)
 					twiml.message(`Task: ${outcome}`);
@@ -155,6 +155,8 @@ module.exports = app => {
 			} else {
 				twiml.message(`Could not interprete reply: ${msg}`)
 			} 
+		})
+		.then(result =>{
 			res.writeHead(200, {'Content-Type':'text/xml'});
 			res.end(twiml.toString());
 		})
