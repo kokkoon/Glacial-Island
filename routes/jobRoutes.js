@@ -177,7 +177,7 @@ const resume = async (jobId, outcome) => {
 	const job = await flowQueue.getJob(jobId);
 	console.log(jobId, job.data.state)
 	if (job.data.state !== "Paused") {
-		//res.send("Only a paused job could be resumed");
+		console.log("Only a paused job could be resumed");
 		return false;
 	}
 	const jobData = {...job.data};
