@@ -63,7 +63,13 @@ const queueDashboard = GUI({
 	disableListen: true
 });
 
-app.use(session({secret:'anyt-string-but-to-keep-secret'}));
+app.use(session({
+	secret:'anyt-string-but-to-keep-secret',
+	name: 'get-approval',
+    proxy: true,
+    resave: true,
+    saveUninitialized: true
+}));
 require('./routes/jobRoutes')(app);
 
 
