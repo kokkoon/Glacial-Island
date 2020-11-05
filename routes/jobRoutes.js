@@ -137,7 +137,7 @@ module.exports = app => {
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			console.log("outcome", outcome)
 			var replyMsg = "";
-			if (outcome !== undefined) return `Failed interprete your reply: ${msg}`;
+			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
 			return resume(waitingJob[0].data.instanceId, outcome)
 				.then(ans => {
 					console.log(ans)
