@@ -131,19 +131,20 @@ module.exports = app => {
 
 	  resQueue.getJobs(['waiting'], 0, 100)
 	  	.then(async result => {
-			if (result.length<1) return `There was no pending task for you`;
 			var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 			console.log(`# of waiting jobs for ${req.body.From}`, waitingJob.length)
+			if (waitingJob.length<1) return `There were no pending task for you`;
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			console.log("outcome", outcome)
 			if (outcome !== undefined) { 
 				resume(waitingJob[0].data.instanceId, outcome)
 					.then(ans => {
+						console.log(ans)
 						waitingJob[0].moveToCompleted('completed', true, true)
 						return `Task: ${outcome}`;
 					}).catch(err => {
 						console.log(`Error...${err} ${msg}`)
-						return `Error... ${msg}`
+						return `Error... ${err}`
 					})
 			} else {
 				return `Failed interprete your reply: ${msg}`
