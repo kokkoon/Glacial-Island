@@ -175,27 +175,28 @@ const resume = (jobId, outcome) => {
 		if (job.data.state !== "Paused") {
 			console.log("Only a paused job could be resumed");
 			reject("Only a paused job could be resumed");
+		} else {
+			const jobData = {...job.data};
+			jobData.definition.actions[0].configuration.properties.outcome = outcome;
+			flowQueue.getJobLogs(jobId)
+				.then(logs => {
+					const jobLogs = {...logs}
+					job.remove();
+					flowQueue.add(jobData, {jobId: jobId})
+						.then(resumedJob => {
+							jobLogs.logs.forEach(log => {
+								resumedJob.log(log);
+							});
+						})
+						.then(resumedJob => {
+							//res.send(resumedJob)
+							console.log(`Job ${jobId} resumed`)
+							resolve(true)
+						})
+				}).catch(err => {
+					reject(err)
+				})
 		}
-		const jobData = {...job.data};
-		jobData.definition.actions[0].configuration.properties.outcome = outcome;
-		flowQueue.getJobLogs(jobId)
-			.then(logs => {
-				const jobLogs = {...logs}
-				job.remove();
-				flowQueue.add(jobData, {jobId: jobId})
-					.then(resumedJob => {
-						jobLogs.logs.forEach(log => {
-							resumedJob.log(log);
-						});
-					})
-					.then(resumedJob => {
-						//res.send(resumedJob)
-						console.log(`Job ${jobId} resumed`)
-						resolve(true)
-					})
-			}).catch(err => {
-				reject(err)
-			})
 	});
 
   }
