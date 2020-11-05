@@ -124,6 +124,7 @@ module.exports = app => {
 
   app.post('/sms/reply', function (req, res) {
 	  const twiml = new MessagingResponse();
+	  twiml.message('Success!');
 	  const smsCount = req.session.counter || 0;
 	  const msg = req.body.Body;
 	  req.session.counter = smsCount + 1;
@@ -141,17 +142,19 @@ module.exports = app => {
 					twiml.message(`There was no pending task to ${msg}`)
 				}
 			} else {
-				twiml.message(`Could not interprete reply: "${msg}"`)
+				twiml.message(`Could not interprete reply: ${msg}`)
 			} 
 		  })
+		.then(result => {
+		})
 		.catch(alert => {
 			console.log("(ops!alert:", alert);
 		})
 
-	  console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
-	  //res.set('Content-Type', 'text/xml')
-	  res.writeHead(200, {'Content-Type':'text/xml'});
-	  res.end(twiml.toString());
+	console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
+	//res.set('Content-Type', 'text/xml')
+	res.writeHead(200, {'Content-Type':'text/xml'});
+	res.end(twiml.toString());
   })
 
 }
