@@ -122,7 +122,7 @@ module.exports = app => {
 		})
   })
 
-  app.post('/sms/reply', function (req, res) {
+  app.post('/sms/reply', async function (req, res) {
 	  const twiml = new MessagingResponse();
 	  twiml.message('Init!');
 	  const smsCount = req.session.counter || 0;
@@ -130,7 +130,7 @@ module.exports = app => {
 	  req.session.counter = smsCount + 1;
 	  console.log("BODY: ", req.body)
 
-	  resQueue.getJobs(['waiting'], 0, 100)
+	  await resQueue.getJobs(['waiting'], 0, 100)
 	  	.then(result => {
 			waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 			console.log(`# of waiting jobs for ${req.body.From}`, waitingJob.length)
