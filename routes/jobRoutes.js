@@ -136,22 +136,25 @@ module.exports = app => {
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			console.log("outcome", outcome)
 			if (outcome !== undefined) { 
-				var ans = await resume(waitingJob[0].data.instanceId, outcome)
-					/*.then(ans => {
-						if (ans) {waitingJob[0].moveToCompleted('completed', true, true)
-						twiml.message(`Task ${outcome}`);} else {
-							twiml.message(`There was no pending task to ${msg}`)
+				resume(waitingJob[0].data.instanceId, outcome)
+					.then(ans => {
+						if (ans) {
+							waitingJob[0].moveToCompleted('completed', true, true)
+							return `Task: ${outcome}`;
+						} else {
+							return `There was no pending task: ${msg}`
 						}
 					}).catch(err => {
-						twiml.message(`There was no pending task to ${msg}`)
-					})*/
-				if (ans) {
+						console.log(`Error...${err} ${msg}`)
+						return `Error... ${msg}`
+					})
+				/*if (ans) {
 					//waitingJob[0].moveToCompleted('completed', true, true);
 					waitingJob[0].remove();
 					return `Task: ${outcome}`;
 				} else {
 					return `There was no pending task: ${msg}`
-				}
+				}*/
 			} else {
 				return `Failed interprete your reply: ${msg}`
 			} 
