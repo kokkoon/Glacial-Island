@@ -130,9 +130,9 @@ module.exports = app => {
 	  req.session.counter = smsCount + 1;
 	  console.log("BODY: ", req.body)
 
-	  await resQueue.getJobs(['waiting'], 0, 100)
-	  	.then(result => {
-			waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
+	  const result = await resQueue.getJobs(['waiting'], 0, 100)
+	  if (result) {
+			var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 			console.log(`# of waiting jobs for ${req.body.From}`, waitingJob.length)
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			console.log("outcome", outcome)
@@ -146,13 +146,10 @@ module.exports = app => {
 			} else {
 				twiml.message(`Could not interprete reply: ${msg}`)
 			} 
-		  })
-		.then(result => {
-		})
-		.catch(alert => {
+		} else {
 			console.log("(ops!alert:", alert);
 			twiml.message('Failed!');
-		})
+		}
 
 	console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
 	//res.set('Content-Type', 'text/xml')
