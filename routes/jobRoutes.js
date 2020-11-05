@@ -132,11 +132,11 @@ module.exports = app => {
 
 	  resQueue.getJobs(['waiting'], 0, 100)
 	  	.then(result => {
-			result1 = result.filter(obj => {return obj.data.to === req.body.From})
+			waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			if (outcome) { 
-				if (resume(result1[0].data.instanceId, outcome)) {
-					result1.moveToCompleted()
+				if (resume(waitingJob[0].data.instanceId, outcome)) {
+					waitingJob.moveToCompleted('completed', true, true)
 	  				twiml.message(`Task ${outcome}`);
 				} else {
 					twiml.message(`There was no pending task to ${msg}`)
