@@ -122,7 +122,7 @@ module.exports = app => {
 		})
   })
 
-  app.post('/sms/reply', async function (req, res) {
+  app.post('/sms/reply', function (req, res) {
 	  const twiml = new MessagingResponse();
 	  twiml.message('Init!');
 	  const smsCount = req.session.counter || 0;
@@ -130,31 +130,37 @@ module.exports = app => {
 	  req.session.counter = smsCount + 1;
 	  console.log("BODY: ", req.body)
 
-	  const result = await resQueue.getJobs(['waiting'], 0, 100)
-	  if (result) {
+	  resQueue.getJobs(['waiting'], 0, 100)
+	  	.then(result => {
 			var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 			console.log(`# of waiting jobs for ${req.body.From}`, waitingJob.length)
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			console.log("outcome", outcome)
 			if (outcome !== undefined) { 
-				if (resume(waitingJob[0].data.instanceId, outcome)) {
-					waitingJob.moveToCompleted('completed', true, true)
-	  				twiml.message(`Task ${outcome}`);
-				} else {
-					twiml.message(`There was no pending task to ${msg}`)
-				}
+				resume(waitingJob[0].data.instanceId, outcome)
+					.then(ans => {
+						if (ans) {waitingJob.moveToCompleted('completed', true, true)
+						twiml.message(`Task ${outcome}`);} else {
+							twiml.message(`There was no pending task to ${msg}`)
+						}
+					}).catch(err => {
+						twiml.message(`There was no pending task to ${msg}`)
+					})
 			} else {
 				twiml.message(`Could not interprete reply: ${msg}`)
 			} 
-		} else {
+			res.writeHead(200, {'Content-Type':'text/xml'});
+			res.end(twiml.toString());
+		})
+		.catch(alert => {
 			console.log("(ops!alert:", alert);
 			twiml.message('Failed!');
-		}
+			res.writeHead(200, {'Content-Type':'text/xml'});
+			res.end(twiml.toString());
+		})
 
-	console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
-	//res.set('Content-Type', 'text/xml')
-	res.writeHead(200, {'Content-Type':'text/xml'});
-	res.end(twiml.toString());
+		console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
+		//res.set('Content-Type', 'text/xml')
   })
 
 }
