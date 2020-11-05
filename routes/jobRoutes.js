@@ -137,23 +137,16 @@ module.exports = app => {
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			console.log("outcome", outcome)
 			var replyMsg = "";
-			if (outcome !== undefined) { 
-				resume(waitingJob[0].data.instanceId, outcome)
-					.then(ans => {
-						console.log(ans)
-						waitingJob[0].moveToCompleted('completed', true, true)
-						replyMsg = `Task: ${outcome}`;
-					}).catch(err => {
-						console.log(`Error...${err} ${msg}`)
-						replyMsg = `Error... ${err}`
-						twiml.message(replyMsg);
-						res.writeHead(200, {'Content-Type':'text/xml'});
-						res.end(twiml.toString());
-					})
-			} else {
-				replyMsg =  `Failed interprete your reply: ${msg}`
-			} 
-			return replyMsg;
+			if (outcome !== undefined) return `Failed interprete your reply: ${msg}`;
+			return resume(waitingJob[0].data.instanceId, outcome)
+				.then(ans => {
+					console.log(ans)
+					waitingJob[0].moveToCompleted('completed', true, true)
+					return `Task: ${outcome}`;
+				}).catch(err => {
+					console.log(`Error...${err} ${msg}`)
+					return `Error... ${err}`
+				})
 		})
 		.then(replyMsg =>{
 			console.log(replyMsg)
