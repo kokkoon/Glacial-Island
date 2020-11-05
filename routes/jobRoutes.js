@@ -139,7 +139,7 @@ module.exports = app => {
 			if (outcome !== undefined) { 
 				var ans = resume(waitingJob[0].data.instanceId, outcome)
 					.then(ans => {
-						if (ans) {waitingJob.moveToCompleted('completed', true, true)
+						if (ans) {waitingJob[0].moveToCompleted('completed', true, true)
 						twiml.message(`Task ${outcome}`);} else {
 							twiml.message(`There was no pending task to ${msg}`)
 						}
@@ -147,7 +147,7 @@ module.exports = app => {
 						twiml.message(`There was no pending task to ${msg}`)
 					})
 				if (ans) {
-					waitingJob.moveToCompleted('completed', true, true)
+					waitingJob[0].moveToCompleted('completed', true, true)
 					twiml.message(`Task: ${outcome}`);
 				} else {
 					twiml.message(`There was no pending task: ${msg}`)
