@@ -149,6 +149,7 @@ module.exports = app => {
 		})
 		.catch(alert => {
 			console.log("(ops!alert:", alert);
+			twiml.message('Failed');
 		})
 
 	console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
