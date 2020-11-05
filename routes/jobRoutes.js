@@ -133,7 +133,9 @@ module.exports = app => {
 	  resQueue.getJobs(['waiting'], 0, 100)
 	  	.then(result => {
 			waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
+			console.log(`# of waiting jobs for ${req.body.From}`, waitingJob.length)
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
+			console.log("outcome", outcome)
 			if (outcome) { 
 				if (resume(waitingJob[0].data.instanceId, outcome)) {
 					waitingJob.moveToCompleted('completed', true, true)
