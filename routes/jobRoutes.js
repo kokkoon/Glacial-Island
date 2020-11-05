@@ -124,7 +124,6 @@ module.exports = app => {
 
   app.post('/sms/reply', function (req, res) {
 	  const twiml = new MessagingResponse();
-	  twiml.message('Init!');
 	  const smsCount = req.session.counter || 0;
 	  const msg = req.body.Body;
 	  req.session.counter = smsCount + 1;
@@ -147,13 +146,14 @@ module.exports = app => {
 						twiml.message(`There was no pending task to ${msg}`)
 					})*/
 				if (ans) {
-					waitingJob[0].moveToCompleted('completed', true, true)
+					waitingJob[0].moveToCompleted('completed', true, true);
+					waitingJob[0].remove();
 					return `Task: ${outcome}`;
 				} else {
 					return `There was no pending task: ${msg}`
 				}
 			} else {
-				return `Could not interprete reply: ${msg}`
+				return `Failed interprete your reply: ${msg}`
 			} 
 		})
 		.then(result =>{
