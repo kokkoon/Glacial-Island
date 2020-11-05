@@ -131,13 +131,13 @@ module.exports = app => {
 	  console.log("BODY: ", req.body)
 
 	  resQueue.getJobs(['waiting'], 0, 100)
-	  	.then(result => {
+	  	.then(async result => {
 			var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 			console.log(`# of waiting jobs for ${req.body.From}`, waitingJob.length)
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			console.log("outcome", outcome)
 			if (outcome !== undefined) { 
-				var ans = resume(waitingJob[0].data.instanceId, outcome)
+				var ans = await resume(waitingJob[0].data.instanceId, outcome)
 					/*.then(ans => {
 						if (ans) {waitingJob[0].moveToCompleted('completed', true, true)
 						twiml.message(`Task ${outcome}`);} else {
@@ -148,15 +148,16 @@ module.exports = app => {
 					})*/
 				if (ans) {
 					waitingJob[0].moveToCompleted('completed', true, true)
-					twiml.message(`Task: ${outcome}`);
+					return `Task: ${outcome}`;
 				} else {
-					twiml.message(`There was no pending task: ${msg}`)
+					return `There was no pending task: ${msg}`
 				}
 			} else {
-				twiml.message(`Could not interprete reply: ${msg}`)
+				return `Could not interprete reply: ${msg}`
 			} 
 		})
 		.then(result =>{
+			twiml.message(result);
 			res.writeHead(200, {'Content-Type':'text/xml'});
 			res.end(twiml.toString());
 		})
