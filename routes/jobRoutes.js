@@ -138,23 +138,12 @@ module.exports = app => {
 			if (outcome !== undefined) { 
 				resume(waitingJob[0].data.instanceId, outcome)
 					.then(ans => {
-						if (ans) {
-							waitingJob[0].moveToCompleted('completed', true, true)
-							return `Task: ${outcome}`;
-						} else {
-							return `There was no pending task: ${msg}`
-						}
+						waitingJob[0].moveToCompleted('completed', true, true)
+						return `Task: ${outcome}`;
 					}).catch(err => {
 						console.log(`Error...${err} ${msg}`)
 						return `Error... ${msg}`
 					})
-				/*if (ans) {
-					//waitingJob[0].moveToCompleted('completed', true, true);
-					waitingJob[0].remove();
-					return `Task: ${outcome}`;
-				} else {
-					return `There was no pending task: ${msg}`
-				}*/
 			} else {
 				return `Failed interprete your reply: ${msg}`
 			} 
@@ -177,33 +166,35 @@ module.exports = app => {
 
 }
 
-const resume = async (jobId, outcome) => {
-	const job = await flowQueue.getJob(jobId);
-	console.log(jobId, job.data.state)
-	if (job.data.state !== "Paused") {
-		console.log("Only a paused job could be resumed");
-		return false;
-	}
-	const jobData = {...job.data};
-	jobData.definition.actions[0].configuration.properties.outcome = outcome;
-	flowQueue.getJobLogs(jobId)
-		.then(logs => {
-			const jobLogs = {...logs}
-			job.remove();
-			flowQueue.add(jobData, {jobId: jobId})
-				.then(resumedJob => {
-					jobLogs.logs.forEach(log => {
-						resumedJob.log(log);
-					});
-				})
-				.then(resumedJob => {
-					//res.send(resumedJob)
-					console.log(`Job ${jobId} resumed`)
-					return true
-				})
-		}).catch(err => {
-			return false
-		})
+const resume = (jobId, outcome) => {
+	return new Promise(async (resolve, reject) => {
+		const job = await flowQueue.getJob(jobId);
+		console.log(jobId, job.data.state)
+		if (job.data.state !== "Paused") {
+			console.log("Only a paused job could be resumed");
+			reject("Only a paused job could be resumed");
+		}
+		const jobData = {...job.data};
+		jobData.definition.actions[0].configuration.properties.outcome = outcome;
+		flowQueue.getJobLogs(jobId)
+			.then(logs => {
+				const jobLogs = {...logs}
+				job.remove();
+				flowQueue.add(jobData, {jobId: jobId})
+					.then(resumedJob => {
+						jobLogs.logs.forEach(log => {
+							resumedJob.log(log);
+						});
+					})
+					.then(resumedJob => {
+						//res.send(resumedJob)
+						console.log(`Job ${jobId} resumed`)
+						resolve(true)
+					})
+			}).catch(err => {
+				reject(err)
+			})
+	});
 
   }
 
