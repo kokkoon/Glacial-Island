@@ -153,6 +153,7 @@ module.exports = app => {
 			return replyMsg;
 		})
 		.then(replyMsg =>{
+			console.log(replyMsg)
 			twiml.message(replyMsg);
 			res.writeHead(200, {'Content-Type':'text/xml'});
 			res.end(twiml.toString());
