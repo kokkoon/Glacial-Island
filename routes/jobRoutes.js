@@ -139,9 +139,10 @@ module.exports = app => {
 			var replyMsg = "";
 			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
 			return resume(waitingJob[0].data.instanceId, outcome)
-				.then(ans => {
+				.then(async ans => {
 					console.log(ans)
-					waitingJob[0].moveToCompleted('completed', true, true)
+					await waitingJob[0].moveToCompleted('completed', true, true)
+					await waitingJob[0].remove();
 					return `Task: ${outcome}`;
 				}).catch(err => {
 					console.log(`Error...${err} ${msg}`)
