@@ -136,7 +136,7 @@ module.exports = app => {
 			console.log(`# of waiting jobs for ${req.body.From}`, waitingJob.length)
 			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
 			console.log("outcome", outcome)
-			if (outcome) { 
+			if (outcome !== undefined) { 
 				if (resume(waitingJob[0].data.instanceId, outcome)) {
 					waitingJob.moveToCompleted('completed', true, true)
 	  				twiml.message(`Task ${outcome}`);
