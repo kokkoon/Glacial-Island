@@ -168,8 +168,8 @@ module.exports = app => {
 
 }
 
-const resume = (jobId, outcome) => {
-	return new Promise(async (resolve, reject) => {
+function resume(jobId, outcome) {
+	return new Promise(async function(resolve, reject) {
 		const job = await flowQueue.getJob(jobId);
 		console.log(jobId, job.data.state)
 		if (job.data.state !== "Paused") {
