@@ -146,7 +146,7 @@ module.exports = app => {
 						twiml.message(`There was no pending task to ${msg}`)
 					})*/
 				if (ans) {
-					waitingJob[0].moveToCompleted('completed', true, true);
+					//waitingJob[0].moveToCompleted('completed', true, true);
 					waitingJob[0].remove();
 					return `Task: ${outcome}`;
 				} else {
