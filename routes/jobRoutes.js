@@ -159,7 +159,7 @@ module.exports = app => {
 			res.end(twiml.toString());
 		})
 
-		console.log("HEADER: ",req.headers, "BODY: ", req.body, "SESSION: ", req.session)
+		console.log("SESSION: ", req.session)
 		//res.set('Content-Type', 'text/xml')
   })
 
@@ -167,6 +167,7 @@ module.exports = app => {
 
 const resume = async (jobId, outcome) => {
 	const job = await flowQueue.getJob(jobId);
+	console.log(jobId, job.data.state)
 	if (job.data.state !== "Paused") {
 		res.send("Only a paused job could be resumed");
 		return false;
