@@ -146,6 +146,9 @@ module.exports = app => {
 					}).catch(err => {
 						console.log(`Error...${err} ${msg}`)
 						replyMsg = `Error... ${err}`
+						twiml.message(replyMsg);
+						res.writeHead(200, {'Content-Type':'text/xml'});
+						res.end(twiml.toString());
 					})
 			} else {
 				replyMsg =  `Failed interprete your reply: ${msg}`
