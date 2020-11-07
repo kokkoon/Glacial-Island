@@ -12,7 +12,26 @@ const twilio = require('twilio');
 const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
 
 const doFunction = (job, node) => {
-  new Promise(res => setTimeout(res, 2000))
+  //new Promise(res => setTimeout(res, 2000))
+	return new Promise(async (resolve, reject) => {
+    switch (node.datatype.type) { //or node.configuration.actionName
+      case "log_message":
+        var logMsg = node.configuration.properties.message;
+        var varNames = node.configuration.properties.message.match(/(?<=\<).+?(?=\>)/g);
+        varNames.map((varName, i) => {
+          var varObj = job.definition.variables.filter(obj => {return obj.name === varNames[i]});
+          console.log(varObj)
+          logMsg = logMsg.replace(/\<.*?\>/g, varObj.name);
+        })
+        var logObj = {timestamp: moment(), status: "", activity: node.configuration.actionName, log: `${logMsg}`};
+        console.log(JSON.stringify(logObj))
+        job.log(JSON.stringify(logObj))
+        break
+      default:
+        break
+    }
+
+  })
 };
 
 var level = 0;
@@ -128,7 +147,7 @@ var exec1 = async (job, actions) => {
       logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
       console.log(actions.length, JSON.stringify(logObj));
       job.log(JSON.stringify(logObj));
-    } else {
+    } else { //do function
 
       
       console.log("Execute doFunction");
