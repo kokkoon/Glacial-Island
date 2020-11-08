@@ -22,6 +22,10 @@ function start() {
         if (!job.data.state) job.data.state = "Active";
         if (!job.data.start) job.data.start = moment();
         job.data.jobStart = moment();
+        job.data.data = {};
+        job.data.definition.variables.forEach(element => {
+            job.data.data[element.name] = element.value
+        });
         await job.update(job.data);
 
         // Start orchestration job

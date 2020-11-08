@@ -17,6 +17,7 @@
     "foreman": "^3.0.1",
     "json-logic-js": "^1.2.2",
     "jsonpath": "^1.0.2",
+    "mathjs": "^8.0.0",
     "moment": "^2.29.0",
     "throng": "^5.0.0",
     "twilio": "^3.50.0"

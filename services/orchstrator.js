@@ -10,6 +10,25 @@ const resQueue = new Bull('RESPONSE', REDIS_URL);
 const moment = require('moment');
 const twilio = require('twilio');
 const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
+const math = require('mathjs')
+
+const str2Json = str => {
+  console.log(str)
+  try {
+      return JSON.parse(str);
+  } catch (e) {
+      return {};
+  }
+}
+
+const parseVariable = (str, data) => {
+  var varNames = str.match(/(?<=\<\<).+?(?=\>\>)/g);
+  console.log(varNames, str, data)
+  varNames && varNames.map((varName, i) => {
+    str = str.replace(/\<\<.*?\>\>/g, data[varName]);
+  })
+  return str
+}
 
 const doFunction = (job, node) => {
   //new Promise(res => setTimeout(res, 2000))
@@ -17,20 +36,66 @@ const doFunction = (job, node) => {
     switch (node.datatype.type) { //or node.configuration.actionName
       case "log_message":
         var logMsg = node.configuration.properties.message;
-        var varNames = node.configuration.properties.message.match(/(?<=\<).+?(?=\>)/g);
-        varNames.map((varName, i) => {
-          var varObj = job.definition.variables.filter(obj => {return obj.name === varNames[i]});
-          console.log(varObj)
-          logMsg = logMsg.replace(/\<.*?\>/g, varObj.name);
-        })
-        var logObj = {timestamp: moment(), status: "", activity: node.configuration.actionName, log: `${logMsg}`};
+        //var varNames = node.configuration.properties.message.match(/(?<=\<\<).+?(?=\>\>)/g);
+        //varNames.map((varName, i) => {
+        //  logMsg = logMsg.replace(/\<\<.*?\>\>/g, job.data.data[varName]);
+        //})
+        var logObj = {timestamp: moment(), status: "Custom", activity: node.configuration.actionName, log: `${parseVariable(logMsg,job.data.data)}`};
         console.log(JSON.stringify(logObj))
         job.log(JSON.stringify(logObj))
+        resolve(true)
+        break
+      case "set_variables":
+        var vars = node.configuration.properties;
+        vars.map((v) => {
+          var varObj = job.data.definition.variables.find(obj => {return obj.name === v.var});
+          var i = job.data.definition.variables.findIndex(obj => {return obj.name === v.var});
+          switch (varObj.type) {
+            case "number":
+              //job.data.definition.variables[i].value = Number(v.val)
+              job.data.data[v.var] = Number(v.val)
+              break
+            case "boolean":
+              //job.data.definition.variables[i].value = (/^\s*(true|1|on)\s*$/i).test(v.val)
+              job.data.data[v.var] = (/^\s*(true|1|on)\s*$/i).test(v.val)
+              break
+            case "array":
+              //job.data.definition.variables[i].value = JSON.parse(v.val)
+              job.data.data[v.var] = JSON.parse(v.val)
+              break
+            case "object":
+              //job.data.definition.variables[i].value = JSON.parse(v.val)
+              job.data.data[v.var] = JSON.parse(v.val)
+              break
+            default: //string as default
+              //job.data.definition.variables[i].value = v.val
+              job.data.data[v.var] = v.val
+              break
+          }
+          console.log(v.var, job.data.data[v.var])
+        })
+        resolve(true)
+        break
+      case "create_variable":
+        var variable = node.configuration.properties;
+        switch (variable.type) {
+          case "number":
+            console.log("number variable")
+            job.data.data[variable.name] = math.evaluate(parseVariable(variable.value, job.data.data))
+            break
+          default:
+            console.log("default case execution")
+            var val = await parseVariable(variable.value, job.data.data)
+            console.log(val)
+            job.data.data[variable.name] = val
+            break
+        }
+        resolve(true)
         break
       default:
         break
     }
-
+    resolve()
   })
 };
 
@@ -39,134 +104,146 @@ var currentNode = {};
 
 //exec first node and continue recurse
 var exec1 = async (job, actions) => {
-  if (actions.length > 0) {
-    const first = actions.shift();
-    console.log("line 22", first.taskType, first.configuration.actionName)
-    
-    var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-    console.log(actions.length, JSON.stringify(logObj))
-    job.log(JSON.stringify(logObj))
+    if (actions.length > 0) {
+      const first = actions.shift();
+      console.log("line 22", first.taskType, first.configuration.actionName)
+      
+      //if (first.configuration.isDisabled) {
+      //  var logObj = {timestamp: moment(), status: "Skipped", activity: first.configuration.actionTitle, log: `Skipped ${first.configuration.actionTitle}`};
+      //  console.log(actions.length, JSON.stringify(logObj))
+      //  job.log(JSON.stringify(logObj))
+      //} 
+      
+        var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
+        console.log(actions.length, JSON.stringify(logObj))
+        job.log(JSON.stringify(logObj))
 
-    if (first.taskType == "logic") {
-      switch (first.configuration.actionName) {
-        case "IF_ELSE":
-          level=level+1;
-          currentNode = {...first};
-          //var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
-          //job.log(JSON.stringify(logObj))
-          //console.log(job.data.definition["variables"]);
-          if (first.rules && jsonLogic.apply(first.rules, job.data.definition["variables"])) {
-            await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
-          } else {
-            await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+        if (first.taskType == "logic") {
+          switch (first.configuration.actionName) {
+            case "IF_ELSE":
+              level=level+1;
+              currentNode = {...first};
+              var operator = first.configuration.properties.operator;
+              var operand1 = first.configuration.properties.operand1;
+              var operand2 = first.configuration.properties.operand2;
+              var rules = str2Json(`{"${operator}": [{"var":"${operand1}"}, ${operand2}]}`);
+              if (Object.keys(rules).length !== 0) 
+              if (jsonLogic.apply(rules, job.data.data)) {
+                await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
+              } else {
+                await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+              }
+              //log exit if_else branch here..
+              var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+              console.log(actions.length, JSON.stringify(logObj));
+              job.log(JSON.stringify(logObj));
+              level = level -1;
+              break
+            case "RUN_IF":
+              break
+            case "WHILE":
+              var operator = first.configuration.properties.operator;
+              var operand1 = first.configuration.properties.operand1;
+              var operand2 = first.configuration.properties.operand2;
+              var rules = str2Json(`{"${operator}": [{"var":"${operand1}"}, ${operand2}]}`);
+              if (Object.keys(rules).length !== 0) 
+              while (jsonLogic.apply(rules, job.data.data)) {
+                await exec1(job, first.branches[0].actions)
+              }
+              var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+              console.log(actions.length, JSON.stringify(logObj));
+              job.log(JSON.stringify(logObj));
+              break
+            default:
+              break
           }
-          //log exit if_else branch here..
-          var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
-          console.log(actions.length, JSON.stringify(logObj));
-          job.log(JSON.stringify(logObj));
-          level = level -1;
-          break
-        case "RUN_IF":
-          break
-        case "WHILE":
-          while (first.rules && jsonLogic.apply(first.rules, job.data.definition["variables"])) {
-            await exac1(job, first.branches[0].actions)
-          }
-          var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
-          console.log(actions.length, JSON.stringify(logObj));
-          job.log(JSON.stringify(logObj));
-          break
-        default:
-          break
-      }
-    } else if (first.taskType =="get-response") {
+        } else if (first.taskType =="get-response") {
 
-      //assign a task and pause..
-      if (job.data.state !== "Paused" ) {
-        var promise = client.messages.create({
-            from: 'whatsapp:+14155238886',
-            body: 'Please reply approve/reject',
-            to: 'whatsapp:+6583327738'
-          });
+          //assign a task and pause..
+          if (job.data.state !== "Paused" ) {
+            var promise = client.messages.create({
+                from: 'whatsapp:+14155238886',
+                body: 'Please reply approve/reject',
+                to: 'whatsapp:+6583327738'
+              });
 
-        promise.then(message => {
-            console.log(message.sid)
-            job.data.messageSID = message.sid;
+            promise.then(message => {
+                console.log(message.sid)
+                job.data.messageSID = message.sid;
+                job.update(job.data);
+              }, error => {
+                console.error(error.message)
+              });
+
+            promise.then(message => {
+              resQueue.add({
+                instanceId: job.id,
+                state: job.data.state,
+                from: 'whatsapp:+14155238886',
+                to: 'whatsapp:+6583327738'
+              })
+              .then(result => {
+                  console.log(result)
+                }, error => {
+                //
+                })
+              .catch(alert => {
+                console.log("alert:", alert)
+              })
+            });
+
+            job.data.state = "Paused";
+            actions.unshift(first);
             job.update(job.data);
-          }, error => {
-            console.error(error.message)
-          });
+            
+            logObj = {timestamp: moment(), status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${first.configuration.actionTitle}`};
+            console.log(actions.length, JSON.stringify(logObj));
+            job.log(JSON.stringify(logObj));
 
-        promise.then(message => {
-          resQueue.add({
-            instanceId: job.id,
-            state: job.data.state,
-            from: 'whatsapp:+14155238886',
-            to: 'whatsapp:+6583327738'
-          })
-          .then(result => {
-              console.log(result)
-            }, error => {
-            //
-            })
-          .catch(alert => {
-            console.log("alert:", alert)
-          })
-        });
+            return "Paused"
+          } else {
+            console.log(first.configuration.properties.outcome)
+            if (true) {
+              await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
+            } else {
+              await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+            }
+            
+            logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
+            console.log(actions.length, JSON.stringify(logObj));
+            job.log(JSON.stringify(logObj));
+          }
+        } else if (first.taskType == "service") {
+          console.log("Execute service");
+          //serviceQueue.add(first)
+          //  .then(job => {console.log("jobId:", job.id)})
+          //  .catch(alert => {console.log("alert:", alert)})
 
-        job.data.state = "Paused";
-        actions.unshift(first);
-        job.update(job.data);
+          //let serviceJob = await serviceQueue.add(first);
+          //let result = await serviceJob.finished();
+          //console.log(result)
+          logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
+          console.log(actions.length, JSON.stringify(logObj));
+          job.log(JSON.stringify(logObj));
+        } else { //do function
+
+          
+          console.log("Execute doFunction");
+          // do task execution
+          await doFunction(job, first);
         
-        logObj = {timestamp: moment(), status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${first.configuration.actionTitle}`};
-        console.log(actions.length, JSON.stringify(logObj));
-        job.log(JSON.stringify(logObj));
+          
+          //finish doing task..
+          //loginst = (moment()) + `: Ended ${first.name}, ${first.title}`;
+          logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
+          console.log(actions.length, JSON.stringify(logObj));
+          job.log(JSON.stringify(logObj));
 
-        return "Paused"
-      } else {
-        console.log(first.configuration.properties.outcome)
-        if (true) {
-          await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
-        } else {
-          await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
         }
-        
-        logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
-        console.log(actions.length, JSON.stringify(logObj));
-        job.log(JSON.stringify(logObj));
-      }
-    } else if (first.taskType == "service") {
-      console.log("Execute service");
-      //serviceQueue.add(first)
-      //  .then(job => {console.log("jobId:", job.id)})
-      //  .catch(alert => {console.log("alert:", alert)})
-
-      //let serviceJob = await serviceQueue.add(first);
-      //let result = await serviceJob.finished();
-      //console.log(result)
-      logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
-      console.log(actions.length, JSON.stringify(logObj));
-      job.log(JSON.stringify(logObj));
-    } else { //do function
-
-      
-      console.log("Execute doFunction");
-      // do task execution
-      await doFunction(job, first);
-     
-      
-      //finish doing task..
-      //loginst = (moment()) + `: Ended ${first.name}, ${first.title}`;
-      logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
-      console.log(actions.length, JSON.stringify(logObj));
-      job.log(JSON.stringify(logObj));
-
+    } else {
+      return "Completed";
     }
-  } else {
-    return "Completed";
-  }
-  return await exec1(job, actions)
-
+    return exec1(job, actions)
 }
 
 var startflow = async (job) => {
