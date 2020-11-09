@@ -3,7 +3,7 @@ const Bull = require('bull');
 const keys = require('./config/keys');
 const QUEUE_NAME = 'FLOW';
 const REDIS_URL = process.env.REDIS_URL || keys.redisURL;
-const orchestrator = require('./services/orchstrator');
+const orchestrator = require('./services/orchestrator');
 const moment = require('moment');
 
 const workers = process.env.WEB_CONCURRENCY || 1;
@@ -22,10 +22,12 @@ function start() {
         if (!job.data.state) job.data.state = "Active";
         if (!job.data.start) job.data.start = moment();
         job.data.jobStart = moment();
-        job.data.data = {};
-        job.data.definition.variables.forEach(element => {
-            job.data.data[element.name] = element.value
-        });
+        if (job.data.state !== "Paused") {
+            job.data.data = {};
+            job.data.definition.variables.forEach(element => {
+                job.data.data[element.name] = element.value
+            });
+        }
         await job.update(job.data);
 
         // Start orchestration job

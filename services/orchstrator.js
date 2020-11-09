@@ -12,6 +12,7 @@ const twilio = require('twilio');
 const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
 const math = require('mathjs')
 
+var context = {}
 const str2Json = str => {
   console.log(str)
   try {
@@ -23,7 +24,6 @@ const str2Json = str => {
 
 const parseVariable = (str, data) => {
   var varNames = str.match(/(?<=\<\<).+?(?=\>\>)/g);
-  console.log(varNames, str, data)
   varNames && varNames.map((varName, i) => {
     str = str.replace(/\<\<.*?\>\>/g, data[varName]);
   })
@@ -36,11 +36,7 @@ const doFunction = (job, node) => {
     switch (node.datatype.type) { //or node.configuration.actionName
       case "log_message":
         var logMsg = node.configuration.properties.message;
-        //var varNames = node.configuration.properties.message.match(/(?<=\<\<).+?(?=\>\>)/g);
-        //varNames.map((varName, i) => {
-        //  logMsg = logMsg.replace(/\<\<.*?\>\>/g, job.data.data[varName]);
-        //})
-        var logObj = {timestamp: moment(), status: "Custom", activity: node.configuration.actionName, log: `${parseVariable(logMsg,job.data.data)}`};
+        var logObj = {timestamp: moment(), status: "Custom", activity: node.configuration.actionName, log: `${parseVariable(logMsg,context)}`};
         console.log(JSON.stringify(logObj))
         job.log(JSON.stringify(logObj))
         resolve(true)
@@ -54,6 +50,7 @@ const doFunction = (job, node) => {
             case "number":
               //job.data.definition.variables[i].value = Number(v.val)
               job.data.data[v.var] = Number(v.val)
+              context[v.var] = Number(v.val)
               break
             case "boolean":
               //job.data.definition.variables[i].value = (/^\s*(true|1|on)\s*$/i).test(v.val)
@@ -70,6 +67,7 @@ const doFunction = (job, node) => {
             default: //string as default
               //job.data.definition.variables[i].value = v.val
               job.data.data[v.var] = v.val
+              context[v.var] = v.val
               break
           }
           console.log(v.var, job.data.data[v.var])
@@ -81,13 +79,14 @@ const doFunction = (job, node) => {
         switch (variable.type) {
           case "number":
             console.log("number variable")
-            job.data.data[variable.name] = math.evaluate(parseVariable(variable.value, job.data.data))
+            job.data.data[variable.name] = math.evaluate(parseVariable(variable.value, context))
+            context[variable.name] = math.evaluate(parseVariable(variable.value, context))
             break
           default:
-            console.log("default case execution")
-            var val = await parseVariable(variable.value, job.data.data)
-            console.log(val)
+            console.log("default case ")
+            var val = await parseVariable(variable.value, context)
             job.data.data[variable.name] = val
+            context[variable.name] = val
             break
         }
         resolve(true)
@@ -95,7 +94,7 @@ const doFunction = (job, node) => {
       default:
         break
     }
-    resolve()
+    resolve(true)
   })
 };
 
@@ -148,6 +147,7 @@ var exec1 = async (job, actions) => {
               var rules = str2Json(`{"${operator}": [{"var":"${operand1}"}, ${operand2}]}`);
               if (Object.keys(rules).length !== 0) 
               while (jsonLogic.apply(rules, job.data.data)) {
+                console.log("WHILE", jsonLogic.apply(rules, context))
                 await exec1(job, first.branches[0].actions)
               }
               var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
@@ -183,7 +183,7 @@ var exec1 = async (job, actions) => {
                 to: 'whatsapp:+6583327738'
               })
               .then(result => {
-                  console.log(result)
+                  //console.log(result)
                 }, error => {
                 //
                 })
@@ -243,10 +243,11 @@ var exec1 = async (job, actions) => {
     } else {
       return "Completed";
     }
-    return exec1(job, actions)
+    return await exec1(job, actions)
 }
 
 var startflow = async (job) => {
+  context = {...job.data.data};
   // Start executing workflow actions...
   var state = await exec1(job, job.data.definition.actions);
 
