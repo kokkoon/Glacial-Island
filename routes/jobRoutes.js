@@ -3,17 +3,24 @@ const URL = require('url');
 const Bull = require("bull");
 const QUEUE_NAME= 'FLOW';
 const keys = require('../config/keys');
+const Auth = require("../services/authentication");
 const sample_flow_definition = require('../config/wf-definition-example.json');
 const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 const resQueue = new Bull('RESPONSE', keys.redisURL);
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
+const redis = require('redis');
+const async = require('async');
 
+var client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD});
+client.on('connect', function(){
+  console.log('Redis Connection Successfull');
+});
 
 module.exports = app => {
   app.use(bodyParser.urlencoded({ extended: false }));
   app.use(bodyParser.json());
 
-  app.post('/orchestration', function(req, res) {
+  app.post('/orchestration', Auth.Authenticate, function(req, res) {
 	const url = URL.parse(req.url, true)
 	const mode = url.query.mode;
 	const jobDefinition = (mode && mode === "test")?sample_flow_definition: req.body;
@@ -120,6 +127,14 @@ module.exports = app => {
 			console.log("(ops!)alert:", alert);
 			res.json({ "status": false, "message": alert.message, "status_code": 401 });
 		})
+  })
+
+  app.get('/keys', function(req, res) {
+	client.keys('*', function (err, keys) {
+		if (err) return console.log(err);
+		res.send(keys);
+		}
+	);
   })
 
   app.post('/sms/reply', function (req, res) {

@@ -120,7 +120,7 @@ var exec1 = async (job, actions) => {
           var operator = first.configuration.properties.operator;
           var operand1 = first.configuration.properties.operand1;
           var operand2 = first.configuration.properties.operand2;
-          var rules = str2Json(`{"${operator}": [{"var":"${operand1}"}, ${operand2}]}`);
+          var rules = JSON.parse(`{"${operator}": [{"var":"${operand1}"}, ${operand2}]}`);
           if (Object.keys(rules).length !== 0) 
           if (jsonLogic.apply(rules, job.data.data)) {
             await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
@@ -139,7 +139,7 @@ var exec1 = async (job, actions) => {
           var operator = first.configuration.properties.operator;
           var operand1 = first.configuration.properties.operand1;
           var operand2 = first.configuration.properties.operand2;
-          var rules = str2Json(`{"${operator}": [{"var":"${operand1}"}, ${operand2}]}`);
+          var rules = JSON.parse(`{"${operator}": [{"var":"${operand1}"}, ${operand2}]}`);
           if (Object.keys(rules).length !== 0) 
           while (jsonLogic.apply(rules, job.data.data)) {
             await exec1(job, [...first.branches[0].actions])
