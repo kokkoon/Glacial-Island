@@ -1,23 +1,64 @@
+const { promisify } = require('util');
 const keys = require('../config/keys');
 const redis = require('redis');
+const redisScan = require('node-redis-scan');
+const async = require('async')
 
 var client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD});
 client.on('connect', function(){
   console.log('Redis Connection Successfull');
 });
+var scanner = new redisScan(client)
 
-/*
-var allkeys = function(callback) {
-  client.get('key', function(err, result) {
-    if (err) callback(err)
-    callback(result)
-  }) 
-}*/
 
-var allkeys = function(callback) {
-  client.keys('*', function (err, keys) {
+var getAllQueues1 = async function(callback) {
+	
+	const getAsync = promisify(client.keys).bind(client);
+
+	const keys =  await getAsync('bull:*');
+
+	callback(keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).filter((v,i) => keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).indexOf(v) === i ))
+
+}
+
+var getAllQueues = async function(callback) {
+    const getAsync = promisify(client.keys).bind(client);
+
+    const keys =  await getAsync('bull:*');
+    return new Promise((resolve, reject) => {
+
+      callback(keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).filter((v,i) => keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).indexOf(v) === i ))
+    })
+
+	
+}
+
+var scan = (callback) =>{
+  scanner.scan('bull:*', {count: 1000}, (err, matchingKeys) => {
+    if (err) throw(err);
+ 
+    // matchingKeys will be an array of strings if matches were found
+    // otherwise it will be an empty array.
+    console.log(matchingKeys)
+    callback(matchingKeys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).filter((v,i) => matchingKeys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).indexOf(v) === i));
+});
+}
+
+var allkeys = function(key) {
+  return new Promise((resolve, reject) => {
+    client.keys(key, function(err, keys) {
+      if (err || keys.length === 0) reject(err)
+      console.log(keys.length)
+      resolve(keys)
+    }) 
+  })
+}
+
+var allIds = function(callback) {
+  client.keys('*:id', function (err, keys) {
     if (err) return console.log(err);
     if(keys){
+      //callback(keys)
         async.map(keys, function(key, cb) {
            client.get(key, function (error, value) {
                 if (error) return cb(error);
@@ -29,7 +70,7 @@ var allkeys = function(callback) {
         }, function (error, results) {
            if (error) return console.log(error);
            console.log(results);
-           callback(null, {data:results});
+           callback({data:results});
         });
     }
 });
@@ -42,10 +83,13 @@ var redisWFInst = function(inst, callback) {
   })
 }
 
-var instanceNumber = function(key, callback) {
-  client.incr(key, function(err, instNum) {
-    if(err) callback(err)
-    callback(null, instNum)
+var instanceNumber = function(key) {
+  return new Promise((resolve, reject) => {
+    client.incr(key, function(err, instNum) {
+      if(err) reject(err)
+      //console.log("instNum:", instNum)
+      resolve(instNum)
+    })
   })
 }
 
@@ -72,7 +116,10 @@ var logInst = function(key, wfDef, log, callback) {
 }
 
 module.exports = {
+  getAllQueues: getAllQueues,
+  scan: scan,
   allkeys: allkeys,
+  allIds: allIds,
   redisWFInst: redisWFInst,
   instanceNumber: instanceNumber,
   newInst: newInst,

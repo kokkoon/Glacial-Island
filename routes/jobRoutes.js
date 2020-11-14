@@ -1,3 +1,4 @@
+const { promisify } = require('util');
 const bodyParser = require("body-parser");
 const URL = require('url');
 const Bull = require("bull");
@@ -10,39 +11,70 @@ const resQueue = new Bull('RESPONSE', keys.redisURL);
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
 const redis = require('redis');
 const async = require('async');
+const redisqueries = require('../services/redisqueries');
+const { doesNotMatch } = require('assert');
 
-var client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD});
-client.on('connect', function(){
-  console.log('Redis Connection Successfull');
-});
 
 module.exports = app => {
   app.use(bodyParser.urlencoded({ extended: false }));
   app.use(bodyParser.json());
 
-  app.post('/orchestration', Auth.Authenticate, function(req, res) {
-	const url = URL.parse(req.url, true)
-	const mode = url.query.mode;
-	const jobDefinition = (mode && mode === "test")?sample_flow_definition: req.body;
-	console.log("Posting ", (mode && mode === "test")? "sample flow definition": "flow definition");
-	jobDefinition.name = jobDefinition.workflowName;
-	jobDefinition.state = "Queued";
-	flowQueue.add(jobDefinition)
-	.then(result => {
-		console.log("jobId:", result.id, "jobState:", result.getState())
-		res.json({"status": true, "data": result, "status_code": 200})
-		}, error => {
-		console.log("error:", error)
-		res.json({ "status": false, "message": error.message, "status_code": 401 });
+  app.get('/allkeys/:id', async function(req, res) {
+	console.log(req.params.id)
+	redisqueries.allkeys(`bull:FLOW:${req.params.id}*`)
+		.then(keys => {
+			res.json({"status": true, "message": keys, "status_code": 200})
 		})
-	.catch(alert => {
-		console.log("alert:", alert)
-		res.json({ "status": false, "message": alert.message, "status_code": 401 });
-	})
-
+		.catch(alert => {
+			res.json({ "status": false, "message": alert.message, "status_code": 401})
+		})
   })
 
-  app.get('/orchestration/:id', function(req, res) {
+  app.get('/allIds', async function(req, res) {
+	redisqueries.allIds(resData => {
+		res.send(resData)
+	})
+	})
+
+  app.get('/queues', async function(req, res) {
+	redisqueries.scan(resData => {
+		res.send(resData)
+	})
+  })
+
+  app.post('/orchestration', Auth.Authenticate, async function(req, res) {
+	  console.log(req.headers)
+	const url = URL.parse(req.url, true)
+	const mode = url.query.mode;
+	const jobDefinition = (mode && mode === "test")?sample_flow_definition: req.body; 
+	redisqueries.instanceNumber('bull:FLOW:id')
+		.then(uniqueId => {
+			console.log(uniqueId);
+			const JobOpts = {
+				... jobDefinition._id && {jobId: jobDefinition._id + "-" + uniqueId}
+			};
+			console.log("Posting ", (mode && mode === "test")? "sample flow definition": "flow definition", JobOpts);
+			jobDefinition.name = jobDefinition.workflowName;
+			jobDefinition.state = "Queued";
+			flowQueue.add(jobDefinition, JobOpts)
+				.then(result => {
+					console.log("jobId:", result.id, "jobState:", result.getState())
+					res.json({"status": true, "data": result, "status_code": 200})
+					}, error => {
+					console.log("error:", error)
+					res.json({ "status": false, "message": error.message, "status_code": 401 });
+					})
+				.catch(alert => {
+					console.log("alert:", alert)
+					res.json({ "status": false, "message": alert.message, "status_code": 401 });
+				})
+		})
+		.catch(alert => {
+			res.json({ "status": false, "message": alert.message, "status_code": 401})
+		})
+  })
+
+  app.get('/orchestration/:id', Auth.Authenticate, function(req, res) {
 	console.log(req.params.id)
 	flowQueue.getJob(req.params.id)
 		.then(job => {
@@ -65,7 +97,7 @@ module.exports = app => {
 		})
   })
 
-  app.get('/logs/:jobId', function(req, res) {
+  app.get('/logs/:jobId', Auth.Authenticate, function(req, res) {
 	const jobId = req.params.jobId;
 	const url = URL.parse(req.url, true);
 	const start = url.query.start? url.query.start : 0;
@@ -84,7 +116,7 @@ module.exports = app => {
 		})
   })
 
-  app.post('/resumejob/:jobId/:outcome', async function(req, res) {
+  app.post('/resumejob/:jobId/:outcome', Auth.Authenticate, async function(req, res) {
 	const jobId = req.params.jobId;
 	const job = await flowQueue.getJob(jobId);
 	if (job.data.state !== "Paused") {
@@ -111,30 +143,40 @@ module.exports = app => {
 
   })
 
-  app.get('/instances/:flowId', function(req, res) {
+  app.get('/instances/:flowId', Auth.Authenticate, function(req, res) {
 	const flowId = req.params.flowId;
-	flowQueue.getJobs(['completed','active','waiting'], 0, 100)
-		.then(result => {
-				console.log("All instances:", result.length)
-				result1 = result.filter(obj => { console.log(obj.data._id); return obj.data._id === flowId });
-				console.log(`Instance of ${flowId}`,result1.length)
-				res.json({"status": true, "data": result1, "status_code": 200});
+
+	redisqueries.allkeys(`bull:FLOW:${flowId}*`)
+		.then(async keys => {
+				const instList = []
+				var inst = {}
+				var getJobList = new Promise((resolve, reject) => {
+					keys.forEach(async (key, i, array) => {
+						if (!key.endsWith(":logs")) {
+							inst = await flowQueue.getJob(key.match(/bull\:FLOW\:(.*)/)[1])
+							instList.push(inst)
+						}
+						if (i === array.length -1) resolve();
+					})
+				})
+				
+				getJobList.then(() => {
+					console.log(`Log instances for ${flowId}:`, instList.length);
+					if (instList.length > 0) {
+						res.json({"status": true, "data":instList, "status_code": 200})
+					} else {
+						res.json({"status": false, "data": [], "status_code": 401})
+					}
+				})
 			}, error => {
 				console.log("error:", error);
 				res.json({ "status": false, "message": error.message, "status_code": 401 });
 			})
 		.catch(alert => {
 			console.log("(ops!)alert:", alert);
-			res.json({ "status": false, "message": alert.message, "status_code": 401 });
+			res.json({ "status": false, "message": alert.message, "status_code": 401})
 		})
-  })
-
-  app.get('/keys', function(req, res) {
-	client.keys('*', function (err, keys) {
-		if (err) return console.log(err);
-		res.send(keys);
-		}
-	);
+	
   })
 
   app.post('/sms/reply', function (req, res) {
@@ -215,4 +257,3 @@ function resume(jobId, outcome) {
 	});
 
   }
-

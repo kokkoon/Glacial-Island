@@ -20,6 +20,7 @@
     "jsonpath": "^1.0.2",
     "mathjs": "^8.0.0",
     "moment": "^2.29.0",
+    "node-redis-scan": "^1.2.1",
     "redis": "^3.0.2",
     "request": "^2.88.2",
     "throng": "^5.0.0",

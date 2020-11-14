@@ -6,8 +6,34 @@ const app = express();
 const Bull = require('bull');
 const GUI = require('bull-arena');
 const keys = require('./config/keys');
+const redisqueries = require('./services/redisqueries');
 
 const serviceWorker = require('./worker-service');
+
+
+redisqueries.getAllQueues(resData => {
+	const qDashboard = GUI({
+		Bull,
+		queues: resData.map(v => ({name: v, hostId: "flow", url: keys.redisURL}))
+	}, {
+		basePath: "/",
+		disableListen: true
+	});
+	
+	app.use('/queue_dashboard', qDashboard);
+})
+
+/*redisqueries.scan(resData => {
+	const qDashboard = GUI({
+		Bull,
+		queues: resData.map(v => ({name: v, hostId: "flow", url: keys.redisURL}))
+	}, {
+		basePath: "/",
+		disableListen: true
+	});
+	
+	app.use('/queue_dashboard', qDashboard);
+})*/
 
 const queueDashboard = GUI({
     Bull,
@@ -73,7 +99,7 @@ app.use(session({
 require('./routes/jobRoutes')(app);
 
 
-app.use('/queue_dashboard', queueDashboard);
+//app.use('/queue_dashboard', queueDashboard);
 
 
 const PORT = process.env.PORT || '4000';

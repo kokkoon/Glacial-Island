@@ -22,11 +22,11 @@ const Authenticate = async (req, res, next) => {
             } else if (responseBody.status) {
                 next();
             } else {
-                res.json({ "res": 1, status: false, message: "Header is not corrected. Please try again." });
+                res.json({ "res": 1, status: false, message: "Header is not correct. Please try again." });
             }
         })
     } else {
-        res.json({ "res": 1, status: false, message: "Header is not corrected. Please try again." });
+        res.json({ "res": 1, status: false, message: "Header is not correct. Please try again." });
     }
 }
 
