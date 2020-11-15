@@ -9,6 +9,7 @@ const keys = require('./config/keys');
 const redisqueries = require('./services/redisqueries');
 
 const serviceWorker = require('./worker-service');
+const taskWorker = require('./worker-task');
 
 
 redisqueries.getAllQueues(resData => {

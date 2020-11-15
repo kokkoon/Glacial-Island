@@ -7,10 +7,12 @@ const QUEUE_NAME = "SERVICE";
 const REDIS_URL = keys.redisURL;
 const serviceQueue = new Bull(QUEUE_NAME, REDIS_URL);
 const resQueue = new Bull('RESPONSE', REDIS_URL);
+const taskQueue = new Bull('TASK', REDIS_URL);
 const moment = require('moment');
 const twilio = require('twilio');
 const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
-const math = require('mathjs')
+const math = require('mathjs');
+const redisqueries = require('./redisqueries');
 
 const str2Json = str => {
   console.log(str)
@@ -23,8 +25,10 @@ const str2Json = str => {
 
 const parseVariable = (str, data) => {
   var varNames = str.match(/(?<=\<\<).+?(?=\>\>)/g);
+  console.log(varNames)
   varNames && varNames.map((varName, i) => {
-    str = str.replace(/\<\<.*?\>\>/g, data[varName]);
+    var regex = new RegExp("\<\<" + varName + "\>\>");
+    str = str.replace(regex, data[varName]);
   })
   return str
 }
@@ -155,6 +159,35 @@ var exec1 = async (job, actions) => {
 
       //assign a task and pause..
       if (job.data.state !== "Paused" ) {
+        //assign task to first.configuration.properties.assignee.assignee
+        var validPhone = /^\+?[1-9]\d{9,14}$/;
+        var assigneeList = first.configuration.properties.assignee.assignee.split(/[,;]+/);
+        assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, ''))?e.trim().replace(/[ -]/g, ''):e);
+        console.log(assigneeList);
+        
+        assigneeList.forEach(async (assignee, i, arr) => {
+
+          redisqueries.instanceNumber('bull:TASK:id')
+            .then(taskId => {
+              const Job = first.configuration.properties;
+              Job.name = first.configuration.properties.taskName; 
+              Job.owner = assignee;
+              const JobOpts = {jobId: assignee + "-" + taskId};
+              taskQueue.add(Job, JobOpts)
+              .then(result => {
+                  //console.log(result)
+                }, error => {
+                  //
+                })
+              .catch(alert => {
+                console.log("alert:", alert)
+              })
+            })
+            .catch(alert => {
+              console.log("Oh-o! alert:", alert)
+            })
+        })
+
         var promise = client.messages.create({
             from: 'whatsapp:+14155238886',
             body: 'Please reply approve/reject',

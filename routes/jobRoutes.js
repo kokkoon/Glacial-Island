@@ -146,16 +146,18 @@ module.exports = app => {
   app.get('/instances/:flowId', Auth.Authenticate, function(req, res) {
 	const flowId = req.params.flowId;
 
-	redisqueries.allkeys(`bull:FLOW:${flowId}*`)
+	redisqueries.allkeys(`bull:FLOW:${flowId}-*[^s]`)
 		.then(async keys => {
+				//console.log(keys);
 				const instList = []
 				var inst = {}
 				var getJobList = new Promise((resolve, reject) => {
 					keys.forEach(async (key, i, array) => {
-						if (!key.endsWith(":logs")) {
+						//console.log(key, i)
+						//if (!key.endsWith(":logs")) {
 							inst = await flowQueue.getJob(key.match(/bull\:FLOW\:(.*)/)[1])
 							instList.push(inst)
-						}
+						//}
 						if (i === array.length -1) resolve();
 					})
 				})
@@ -170,7 +172,7 @@ module.exports = app => {
 				})
 			}, error => {
 				console.log("error:", error);
-				res.json({ "status": false, "message": error.message, "status_code": 401 });
+				res.json({ "status": false, "message": "Found no matching keys", "status_code": 401 });
 			})
 		.catch(alert => {
 			console.log("(ops!)alert:", alert);
