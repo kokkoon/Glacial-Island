@@ -5,8 +5,16 @@ const REDIS_URL= keys.redisURL; //'redis://h:zwWbvx0uyH2ZYceqMAUzeHXm8u90ROnK@re
 const taskQueue = new Bull(QUEUE_NAME, REDIS_URL);
 
 taskQueue.process(function(job, done) {
-  console.log(job.id, job.data, job.opts)
-  //job.log((job.data.state && job.data.state=="Paused")? "Resuming workflow...": "Starting workflow...")
-  //job.moveToCompleted("stopped", true)
+  console.log("Processing task id:", job.id)
+  var validEmail = /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+  var validPhone = /^\+?[1-9]\d{9,14}$/;
+  if (validEmail.test(job.owner.trim())) {
+    // Check preferred notification mode and send notification
+    console.log("Send email notification for " + job.owner)
+  } else if (validPhone.test(job.owner.trim().replace(/[ -]/g, ''))) {
+    // send notification via sms/Whatsapp
+    console.log("Send sms/whatsapp notification for " + job.owner)
+  }
+  
   done();
 });

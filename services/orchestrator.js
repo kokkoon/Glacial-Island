@@ -3,11 +3,13 @@ const JSONPath = require('jsonpath');
 const jsonLogic = require('json-logic-js');
 const Bull = require('bull');
 const keys = require('../config/keys');
+const NODE_ENV = process.env.NODE_ENV;
+const TASK_QUEUE = 'TASK@' + NODE_ENV;
 const QUEUE_NAME = "SERVICE";
 const REDIS_URL = keys.redisURL;
 const serviceQueue = new Bull(QUEUE_NAME, REDIS_URL);
 const resQueue = new Bull('RESPONSE', REDIS_URL);
-const taskQueue = new Bull('TASK', REDIS_URL);
+const taskQueue = new Bull(TASK_QUEUE, REDIS_URL);
 const moment = require('moment');
 const twilio = require('twilio');
 const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
@@ -165,15 +167,18 @@ var exec1 = async (job, actions) => {
         assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, ''))?e.trim().replace(/[ -]/g, ''):e);
         console.log(assigneeList);
         
-        assigneeList.forEach(async (assignee, i, arr) => {
+        assigneeList.forEach((assignee, i, arr) => {
 
           redisqueries.instanceNumber('bull:TASK:id')
             .then(taskId => {
-              const Job = first.configuration.properties;
-              Job.name = first.configuration.properties.taskName; 
-              Job.owner = assignee;
+              console.log(assignee)
+              const taskData = {...first.configuration.properties};
+              taskData.name = first.configuration.properties.taskName; 
+              taskData.owner = assignee;
+              taskData.tenant = job.data.tenant;
+              taskData.status = "New";
               const JobOpts = {jobId: assignee + "-" + taskId};
-              taskQueue.add(Job, JobOpts)
+              taskQueue.add(taskData, JobOpts)
               .then(result => {
                   //console.log(result)
                 }, error => {
@@ -188,6 +193,7 @@ var exec1 = async (job, actions) => {
             })
         })
 
+        /*
         var promise = client.messages.create({
             from: 'whatsapp:+14155238886',
             body: 'Please reply approve/reject',
@@ -218,6 +224,7 @@ var exec1 = async (job, actions) => {
             console.log("alert:", alert)
           })
         });
+        */
 
         job.data.state = "Paused";
         actions.unshift(first);

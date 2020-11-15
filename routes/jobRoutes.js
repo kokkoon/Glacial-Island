@@ -1,13 +1,15 @@
 const { promisify } = require('util');
 const bodyParser = require("body-parser");
 const URL = require('url');
+const keys = require('../config/keys');
+const NODE_ENV = process.env.NODE_ENV;
 const Bull = require("bull");
 const QUEUE_NAME= 'FLOW';
-const keys = require('../config/keys');
+const TASK_QUEUE = 'TASK@' + NODE_ENV;
+const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
+const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
 const Auth = require("../services/authentication");
 const sample_flow_definition = require('../config/wf-definition-example.json');
-const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
-const resQueue = new Bull('RESPONSE', keys.redisURL);
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
 const redis = require('redis');
 const async = require('async');
@@ -55,6 +57,7 @@ module.exports = app => {
 			};
 			console.log("Posting ", (mode && mode === "test")? "sample flow definition": "flow definition", JobOpts);
 			jobDefinition.name = jobDefinition.workflowName;
+			jobDefinition.tenant = req.headers.tenant;
 			jobDefinition.state = "Queued";
 			flowQueue.add(jobDefinition, JobOpts)
 				.then(result => {
@@ -188,7 +191,7 @@ module.exports = app => {
 	  req.session.counter = smsCount + 1;
 	  console.log("BODY: ", req.body)
 
-	  resQueue.getJobs(['waiting'], 0, 100)
+	  taskQueue.getJobs(['delayed'], 0, 100)
 	  	.then(async result => {
 			var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 			console.log(`# of waiting jobs for ${req.body.From}`, waitingJob.length)
@@ -200,8 +203,11 @@ module.exports = app => {
 			return resume(waitingJob[0].data.instanceId, outcome)
 				.then(async ans => {
 					console.log(ans)
-					await waitingJob[0].moveToCompleted('completed', true, true)
-					await waitingJob[0].remove();
+					waitingJob[0].data.status = "Completed";
+					await waitingJob[0].update(waitingJob.data);
+					await waitingJob[0].promote;
+					//await waitingJob[0].moveToCompleted('completed', true, true)
+					//await waitingJob[0].remove();
 					return `Task: ${outcome}`;
 				}).catch(err => {
 					console.log(`Error...${err} ${msg}`)
