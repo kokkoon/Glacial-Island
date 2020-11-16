@@ -200,6 +200,7 @@ module.exports = app => {
 			console.log("outcome", outcome)
 			var replyMsg = "";
 			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
+			//Approval criteria check... then resume or not
 			return resume(waitingJob[0].data.instanceId, outcome)
 				.then(async ans => {
 					console.log(ans)

@@ -5,14 +5,13 @@ const Bull = require('bull');
 const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
-const QUEUE_NAME = "SERVICE";
+//const QUEUE_NAME = "SERVICE";
 const REDIS_URL = keys.redisURL;
-const serviceQueue = new Bull(QUEUE_NAME, REDIS_URL);
-const resQueue = new Bull('RESPONSE', REDIS_URL);
+//const serviceQueue = new Bull(QUEUE_NAME, REDIS_URL);
 const taskQueue = new Bull(TASK_QUEUE, REDIS_URL);
 const moment = require('moment');
 const twilio = require('twilio');
-const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
+//const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
 const math = require('mathjs');
 const redisqueries = require('./redisqueries');
 
@@ -166,67 +165,45 @@ var exec1 = async (job, actions) => {
         var assigneeList = first.configuration.properties.assignee.assignee.split(/[,;]+/);
         assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, ''))?e.trim().replace(/[ -]/g, ''):e);
         console.log(assigneeList);
-        
-        assigneeList.forEach((assignee, i, arr) => {
 
-          redisqueries.instanceNumber('bull:TASK:id')
-            .then(taskId => {
-              console.log(assignee)
-              const taskData = {...first.configuration.properties};
-              taskData.name = first.configuration.properties.taskName; 
-              taskData.owner = assignee;
-              taskData.tenant = job.data.tenant;
-              taskData.status = "New";
-              taskData.instanceId = job.id;
-              taskData.state = job.data.state;
-              const JobOpts = {jobId: assignee + "-" + taskId};
-              taskQueue.add(taskData, JobOpts)
-              .then(result => {
-                  //console.log(result)
-                }, error => {
-                  //
+        var taskList = [];
+        
+				var createTaskList = new Promise((resolve, reject) => {
+          assigneeList.forEach((assignee, i, arr) => {
+            redisqueries.instanceNumber('bull:TASK:id')
+              .then(taskId => {
+                console.log(assignee)
+                const taskData = {...first.configuration.properties};
+                taskData.name = first.configuration.properties.taskName; 
+                taskData.owner = assignee;
+                taskData.tenant = job.data.tenant;
+                taskData.status = "New";
+                taskData.instanceId = job.id;
+                taskData.state = job.data.state;
+                taskData.linkedTask = i===0 ? taskId : taskList[0].data.linkedTask;
+                const JobOpts = {jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true};
+                taskList[i] = {data: taskData, opts: JobOpts}
+                taskQueue.add(taskData, JobOpts)
+                .then(result => {
+                    //console.log(result)
+                  }, error => {
+                    //
+                  })
+                .catch(alert => {
+                  console.log("alert:", alert)
                 })
-              .catch(alert => {
-                console.log("alert:", alert)
               })
-            })
-            .catch(alert => {
-              console.log("Oh-o! alert:", alert)
-            })
+              .catch(alert => {
+                console.log("Oh-o! alert:", alert)
+              });
+              if (i === arr.length -1) resolve();
+          })
         })
 
-        /*
-        var promise = client.messages.create({
-            from: 'whatsapp:+14155238886',
-            body: 'Please reply approve/reject',
-            to: 'whatsapp:+6583327738'
-          });
+        createTaskList.then(() => {
+          console.log("taskList:",taskList)
+        })
 
-        promise.then(message => {
-            console.log(message.sid)
-            job.data.messageSID = message.sid;
-            job.update(job.data);
-          }, error => {
-            console.error(error.message)
-          });
-
-        promise.then(message => {
-          resQueue.add({
-            instanceId: job.id,
-            state: job.data.state,
-            from: 'whatsapp:+14155238886',
-            to: 'whatsapp:+6583327738'
-          })
-          .then(result => {
-              //console.log(result)
-            }, error => {
-            //
-            })
-          .catch(alert => {
-            console.log("alert:", alert)
-          })
-        });
-        */
 
         job.data.state = "Paused";
         actions.unshift(first);
