@@ -13,6 +13,7 @@ const redisqueries = require('./services/redisqueries');
 
 
 redisqueries.getAllQueues(resData => {
+	resData = resData.length === 0 ? ["FLOW"] : resData
 	const qDashboard = GUI({
 		Bull,
 		queues: resData.map(v => ({name: v, hostId: "flow", url: keys.redisURL}))

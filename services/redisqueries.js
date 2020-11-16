@@ -10,27 +10,16 @@ client.on('connect', function(){
 });
 var scanner = new redisScan(client)
 
-
-var getAllQueues1 = async function(callback) {
-	
-	const getAsync = promisify(client.keys).bind(client);
-
-	const keys =  await getAsync('bull:*');
-
-	callback(keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).filter((v,i) => keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).indexOf(v) === i ))
-
-}
-
 var getAllQueues = async function(callback) {
+  try {
     const getAsync = promisify(client.keys).bind(client);
 
     const keys =  await getAsync('bull:*');
-    return new Promise((resolve, reject) => {
 
-      callback(keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).filter((v,i) => keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).indexOf(v) === i ))
-    })
-
-	
+    callback(keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).filter((v,i) => keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).indexOf(v) === i ))
+  } catch (err) {
+    console.log(err.message)
+  }
 }
 
 var scan = (callback) =>{

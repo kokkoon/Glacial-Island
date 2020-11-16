@@ -4,11 +4,11 @@ const jsonLogic = require('json-logic-js');
 const Bull = require('bull');
 const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV;
-const TASK_QUEUE = 'TASK@' + NODE_ENV;
+const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
 //const QUEUE_NAME = "SERVICE";
 const REDIS_URL = keys.redisURL;
 //const serviceQueue = new Bull(QUEUE_NAME, REDIS_URL);
-const taskQueue = new Bull(TASK_QUEUE, REDIS_URL);
+const msgQueue = new Bull(MSG_QUEUE, REDIS_URL);
 const moment = require('moment');
 const twilio = require('twilio');
 //const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
@@ -183,7 +183,7 @@ var exec1 = async (job, actions) => {
                 taskData.linkedTask = i===0 ? taskId : taskList[0].data.linkedTask;
                 const JobOpts = {jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true};
                 taskList[i] = {data: taskData, opts: JobOpts}
-                taskQueue.add(taskData, JobOpts)
+                msgQueue.add(taskData, JobOpts)
                 .then(result => {
                     //console.log(result)
                   }, error => {
