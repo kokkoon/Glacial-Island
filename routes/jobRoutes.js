@@ -209,7 +209,7 @@ module.exports = app => {
 					await waitingJob[0].promote();
 					//await waitingJob[0].moveToCompleted('completed', true, true)
 					//await waitingJob[0].remove();
-					return `Task: ${outcome}`;
+					return `${ans}`;
 				}).catch(err => {
 					console.log(`Error...${err} ${msg}`)
 					return `Error... ${err}`
@@ -278,7 +278,7 @@ function resume(task, outcome) {
 						.then(resumedJob => {
 							//res.send(resumedJob)
 							console.log(`Job ${jobId} resumed`)
-							resolve(`Job ${jobId} resumed`)
+							resolve(`Workflow instance ${jobId} resumed`)
 						})
 				}).catch(err => {
 					reject(err)
