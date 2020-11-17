@@ -201,9 +201,9 @@ module.exports = app => {
 			var replyMsg = "";
 			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
 			//Approval criteria check... then resume or not
-			return resume(waitingJob[0].data.instanceId, outcome)
+			return resume(waitingJob[0], outcome)
 				.then(async ans => {
-					console.log(ans)
+					console.log("Resumed message:", ans)
 					waitingJob[0].data.status = "Completed";
 					await waitingJob[0].update(waitingJob[0].data);
 					await waitingJob[0].promote();
@@ -234,14 +234,35 @@ module.exports = app => {
 
 }
 
-function resume(jobId, outcome) {
+function resume(task, outcome) {
 	return new Promise(async function(resolve, reject) {
-		const job = await flowQueue.getJob(jobId);
+		const jobId = task.data.instanceId
+		const job = await flowQueue.getJob(jobId); //get workflow instance by instance id
 		console.log(jobId, job.data.state)
 		if (job.data.state !== "Paused") {
 			console.log("Only a paused job could be resumed");
 			reject("Only a paused job could be resumed");
 		} else {
+			// Check approval criteria here before setting job/workflow's outcome
+			// criteria = "Anyone" | "Majority" | "All"
+			if (task.data.criteria!="Anyone") {  
+				var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
+				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*[^s]`)
+					.then(async keys => {
+						if (keys.length > 1)  {
+							const taskList = []
+							var inst = {}
+							var getTaskList = new Promise((resolve, reject) => {
+								resolve([])
+							})
+						}
+					})
+					.catch(alert => {
+						console.log("(ops!)alert:", alert);
+					})
+			}
+			
+			// Approval concluded, resume workflow...
 			const jobData = {...job.data};
 			jobData.definition.actions[0].configuration.properties.outcome = outcome;
 			flowQueue.getJobLogs(jobId)
@@ -257,7 +278,7 @@ function resume(jobId, outcome) {
 						.then(resumedJob => {
 							//res.send(resumedJob)
 							console.log(`Job ${jobId} resumed`)
-							resolve(true)
+							resolve(`Job ${jobId} resumed`)
 						})
 				}).catch(err => {
 					reject(err)
