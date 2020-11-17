@@ -249,6 +249,7 @@ function resume(task, outcome) {
 				var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
 				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*[^s]`)
 					.then(async keys => {
+						console.log(`Total task/assignee: ${keys.length}`)
 						if (keys.length > 1)  {
 							const taskList = []
 							var inst = {}
@@ -278,7 +279,7 @@ function resume(task, outcome) {
 						.then(resumedJob => {
 							//res.send(resumedJob)
 							console.log(`Job ${jobId} resumed`)
-							resolve(`Workflow instance ${jobId} resumed`)
+							resolve(`Workflow instance ${jobId} resumed as "${outcome}"`)
 						})
 				}).catch(err => {
 					reject(err)
