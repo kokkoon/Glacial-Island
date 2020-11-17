@@ -256,8 +256,8 @@ function resume(task, outcome) {
 							var taskInst = undefined;
 							var getTaskList = new Promise((resolve, reject) => {
 								keys.forEach(async (key, i, array) => {
-									console.log("Retriving task:", key, key.match(/([^:]+$)/));
-									taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)); //substring after the last colon (i.e. :)
+									console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
+									taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
 									taskInst && taskInst.status && console.log("Task Inst:", taskInst.status);
 									taskInst && taskList.push(taskInst);
 									if (i === array.length -1) resolve();
