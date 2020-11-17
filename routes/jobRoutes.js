@@ -205,7 +205,7 @@ module.exports = app => {
 				.then(async ans => {
 					console.log("Resumed message:", ans)
 					waitingJob[0].data.status = "Completed";
-					waitingJob[0].data.repliedOutcome = outcome;
+					waitingJob[0].data.response = outcome;
 					await waitingJob[0].update(waitingJob[0].data);
 					await waitingJob[0].promote();
 					//await waitingJob[0].moveToCompleted('completed', true, true)
@@ -258,14 +258,18 @@ function resume(task, outcome) {
 								keys.forEach(async (key, i, array) => {
 									console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
 									taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
-									taskInst && taskInst.status && console.log("Task Inst:", taskInst.status);
-									taskInst && taskList.push(taskInst);
+									taskInst && console.log("Task Inst:", taskInst.response);
+									taskInst && taskList.push(taskInst.response);
 									if (i === array.length -1) resolve();
 								})
 							})
 
 							getTaskList.then(() => {
-								console.log("Returned taskList length:", taskList.length)
+								var agreed = taskList.filter(x => x == "approved").length;
+								var disagreed = taskList.filter(x => x == "rejected").length;
+								var other = taskList.filter(x => !["approved", "rejected"].contains(x)).length;
+								var allAgreed = agreed === taskList.length;
+								console.log("taskList length:", taskList.length,"Approved:", agreed, "Rejected:", disagreed, "Other:", other, "All agreed?", allAgreed)
 							})
 						}
 					})
