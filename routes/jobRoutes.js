@@ -205,6 +205,7 @@ module.exports = app => {
 				.then(async ans => {
 					console.log("Resumed message:", ans)
 					waitingJob[0].data.status = "Completed";
+					waitingJob[0].data.repliedOutcome = outcome;
 					await waitingJob[0].update(waitingJob[0].data);
 					await waitingJob[0].promote();
 					//await waitingJob[0].moveToCompleted('completed', true, true)
@@ -247,14 +248,24 @@ function resume(task, outcome) {
 			// criteria = "Anyone" | "Majority" | "All"
 			if (task.data.criteria!="Anyone") {  
 				var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
-				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*[^s]`)
+				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 					.then(async keys => {
-						console.log(`Total task/assignee: ${keys.length}`)
+						console.log(`Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
 						if (keys.length > 1)  {
-							const taskList = []
-							var inst = {}
+							const taskList = [];
+							var taskInst = undefined;
 							var getTaskList = new Promise((resolve, reject) => {
-								resolve([])
+								keys.forEach(async (key, i, array) => {
+									console.log("Retriving task:", key);
+									taskInst = await taskQueue.getJob(key);
+									taskInst && taskInst.status && console.log("Task Inst:", taskInst.status);
+									taskInst && taskList.push(taskInst);
+									if (i === array.length -1) resolve();
+								})
+							})
+
+							getTaskList.then(() => {
+								console.log("Returned taskList length:", taskList.length)
 							})
 						}
 					})
