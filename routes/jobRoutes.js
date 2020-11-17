@@ -196,8 +196,8 @@ module.exports = app => {
 			var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 			console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
 			if (waitingJob.length<1) return `There were no pending task for you`;
-			const outcome = msg.match(/Approve/i) ? 'approved': msg.match(/Reject/i) ? 'rejected':undefined;
-			console.log("outcome", outcome)
+			const outcome = msg.match(/Ap/i) ? 'approved': msg.match(/Re/i) ? 'rejected':undefined;
+			console.log("User's response:", outcome)
 			var replyMsg = "";
 			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
 			//Approval criteria check... then resume or not
