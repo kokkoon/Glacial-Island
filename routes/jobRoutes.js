@@ -207,7 +207,7 @@ module.exports = app => {
 					waitingJob[0].data.status = "Completed";
 					waitingJob[0].data.response = outcome;
 					await waitingJob[0].update(waitingJob[0].data);
-					await waitingJob[0].promote();
+					//await waitingJob[0].promote();
 					//await waitingJob[0].moveToCompleted('completed', true, true)
 					//await waitingJob[0].remove();
 					return `${ans}`;
