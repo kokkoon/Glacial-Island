@@ -258,6 +258,7 @@ function resume(task, outcome) {
 								keys.forEach(async (key, i, array) => {
 									console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
 									taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
+									console.log(taskInst);
 									taskInst && console.log("Task Inst:", taskInst.data.response);
 									taskInst && taskList.push(taskInst.data.response);
 									if (i === array.length -1) resolve();
@@ -267,7 +268,7 @@ function resume(task, outcome) {
 							getTaskList.then(() => {
 								var agreed = taskList.filter(x => x == "approved").length;
 								var disagreed = taskList.filter(x => x == "rejected").length;
-								var other = taskList.filter(x => !(["approved", "rejected"].contains(x))).length;
+								var other = taskList.filter(x => x.match(/^(approved|rejected)$/)).length;
 								var allAgreed = agreed === taskList.length;
 								console.log("taskList length:", taskList.length,"Approved:", agreed, "Rejected:", disagreed, "Other:", other, "All agreed?", allAgreed)
 							})
