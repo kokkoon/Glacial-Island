@@ -185,8 +185,9 @@ module.exports = app => {
   })
 
   app.get('/tasks', function(req, res) {
-	var owner = req.headers.owner ? req.headers.owner: "";
-	redisqueries.allkeys(`bull:${TASK_QUEUE}:${owner}-*`)
+	var owner = req.headers.owner ? req.headers.owner.split(','): "";
+	console.log(owner)
+	redisqueries.allkeys(`bull:${TASK_QUEUE}:${owner[0]}-*`)
 		.then(async keys => {
 			const taskList = [];
 			var taskInst = undefined;
