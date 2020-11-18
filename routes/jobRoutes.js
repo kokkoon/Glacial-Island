@@ -317,7 +317,7 @@ function resume(task, outcome) {
 								}
 
 								if (outcomeByCriteria == "") {
-									reject("Criteria not fulfilled")
+									resolve(`${outcome}, pending completion criteria!`)
 								} else {
 									// Criteria fulfilled, resume workflow...
 									jobData.definition.actions[0].configuration.properties.outcome = outcomeByCriteria;
