@@ -34,11 +34,9 @@ var scan = (callback) =>{
 }
 
 var allkeys = function(key) {
-  console.log("key:",key)
   return new Promise((resolve, reject) => {
     client.keys(key, function(err, keys) {
       if (err || keys.length === 0) reject(err)
-      console.log(keys.length)
       resolve(keys)
     }) 
   })

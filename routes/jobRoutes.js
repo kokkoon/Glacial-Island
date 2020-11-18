@@ -186,7 +186,38 @@ module.exports = app => {
 
   app.get('/tasks', function(req, res) {
 	var owner = req.headers.owner ? req.headers.owner.split(','): "";
-	console.log(owner)
+	var getKeys = new Promise((resolve, reject) => {
+		var keys = [];
+		var keylist = undefined
+		owner.forEach(async (key, i, array) => {
+			keylist = await redisqueries.allkeys(`bull:${TASK_QUEUE}:${key}-*`)
+			keys = keys.concat(keylist) 
+			if (i === array.length - 1) resolve(keys)
+		});
+	});
+	getKeys.then((allkeys) => {
+		console.log("allkeys", allkeys);
+		const taskList = [];
+		var taskInst = undefined;
+		var getTaskList = new Promise((resolve, reject) => {
+			allkeys.forEach(async (key, i, array) => {
+				console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
+				taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
+				//console.log(taskInst)
+				taskInst && taskList.push({key: key, data: taskInst.data});
+				if (i === array.length -1) resolve(taskList);
+			})
+		})
+
+		getTaskList.then((tl) => {
+			res.json({"status": true, "data": tl, "status_code":200})
+		})
+	})
+	.catch(alert => {
+		console.log("(ops!)alert:", alert);
+		res.json({ "status": false, "message": alert, "status_code": 401})
+	})
+	/*
 	redisqueries.allkeys(`bull:${TASK_QUEUE}:${owner[0]}-*`)
 		.then(async keys => {
 			const taskList = [];
@@ -209,6 +240,7 @@ module.exports = app => {
 			console.log("(ops!)alert:", alert);
 			res.json({ "status": false, "message": alert, "status_code": 401})
 		})
+	*/
   })
 
   app.post('/sms/reply', function (req, res) {
