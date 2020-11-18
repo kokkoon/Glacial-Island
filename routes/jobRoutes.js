@@ -250,27 +250,30 @@ function resume(task, outcome) {
 				var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
 				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 					.then(async keys => {
+						keys.splice(keys.indexOf(task.id),1);
 						console.log(`Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
-						if (keys.length > 1)  {
+						if (keys.length > 0)  {
 							const taskList = [];
 							var taskInst = undefined;
 							var getTaskList = new Promise((resolve, reject) => {
 								keys.forEach(async (key, i, array) => {
 									console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
 									taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
-									taskInst && console.log("Task Inst:", taskInst);
+									taskInst && console.log("Task Inst:", taskInst.data.response);
 									taskInst && taskList.push(taskInst.data.response);
 									if (i === array.length -1) resolve(taskList);
 								})
 							})
 
 							getTaskList.then((tl) => {
-								console.log(tl)
-								var agreed = taskList.filter(x => x == "approved").length;
-								var disagreed = taskList.filter(x => x == "rejected").length;
-								var other = taskList.filter(x => x.match(/^(approved|rejected)$/)).length;
-								var allAgreed = agreed === taskList.length;
-								console.log("taskList length:", taskList.length,"Approved:", agreed, "Rejected:", disagreed, "Other:", other, "All agreed?", allAgreed)
+								tl.push(outcome);
+								var allEqual = tl.every(v => v === tl[0]);
+								var majority = majorityElement(tl);
+								var agreed = tl.filter(x => x == "approved").length;
+								var disagreed = tl.filter(x => x == "rejected").length;
+								var other = tl.filter(x => x.match(/^(approved|rejected)$/)).length;
+								var allAgreed = agreed === tl.length;
+								console.log("taskList:", tl, "length:", tl.length,"all equals?", allEqual, allEqual? tl[0]: "", "Majority:", majority, "All agreed?", allAgreed)
 							})
 						}
 					})
@@ -303,4 +306,14 @@ function resume(task, outcome) {
 		}
 	});
 
+  }
+
+  function majorityElement(arr) {
+	let map = {}
+	arr.map(v =>  map[v] = map[v] ? map[v] + 1 : 1 );
+	var keys = Object.keys(map);
+	var arr1 = Object.keys( map ).map(function ( key ) { return map[key]; });
+	var max = Math.max.apply( null, arr1 );
+	var filtered = keys.filter(key => {return map[key] === max})
+	return (filtered.length > 1?"":filtered[0])
   }
