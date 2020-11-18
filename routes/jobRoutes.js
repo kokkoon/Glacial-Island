@@ -184,6 +184,32 @@ module.exports = app => {
 	
   })
 
+  app.get('/tasks', function(req, res) {
+	var owner = req.headers.owner ? req.headers.owner: "";
+	redisqueries.allkeys(`bull:${TASK_QUEUE}:${owner}-*`)
+		.then(async keys => {
+			const taskList = [];
+			var taskInst = undefined;
+			var getTaskList = new Promise((resolve, reject) => {
+				keys.forEach(async (key, i, array) => {
+					console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
+					taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
+					//console.log(taskInst)
+					taskInst && taskList.push({key: key, data: taskInst.data});
+					if (i === array.length -1) resolve(taskList);
+				})
+			})
+
+			getTaskList.then((tl) => {
+				res.json({"status": true, "data": tl, "status_code":200})
+			})
+		})
+		.catch(alert => {
+			console.log("(ops!)alert:", alert);
+			res.json({ "status": false, "message": alert, "status_code": 401})
+		})
+  })
+
   app.post('/sms/reply', function (req, res) {
 	  const twiml = new MessagingResponse();
 	  const smsCount = req.session.counter || 0;
@@ -206,6 +232,7 @@ module.exports = app => {
 					console.log("Resumed message:", ans)
 					waitingJob[0].data.status = "Completed";
 					waitingJob[0].data.response = outcome;
+					waitingJob[0].data.updated = Date.now();
 					await waitingJob[0].update(waitingJob[0].data);
 					//await waitingJob[0].promote();
 					//await waitingJob[0].moveToCompleted('completed', true, true)
@@ -239,19 +266,25 @@ function resume(task, outcome) {
 	return new Promise(async function(resolve, reject) {
 		const jobId = task.data.instanceId
 		const job = await flowQueue.getJob(jobId); //get workflow instance by instance id
+		const jobData = {...job.data};
 		console.log(jobId, job.data.state)
 		if (job.data.state !== "Paused") {
 			console.log("Only a paused job could be resumed");
 			reject("Only a paused job could be resumed");
 		} else {
+			/* Note:
 			// Check approval criteria here before setting job/workflow's outcome
 			// criteria = "Anyone" | "Majority" | "All"
+			// Anyone = First response to complete
+			// Majority = highest vote or "Reject" (i.e. equal vote = rejected)
+			// All = all must agreed on a decision to complete, or it will be rejected
+			*/
 			if (task.data.criteria!="Anyone") {  
 				var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
 				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 					.then(async keys => {
-						keys.splice(keys.indexOf(task.id),1);
 						console.log(`Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
+						keys.splice(keys.indexOf(task.id),1);
 						if (keys.length > 0)  {
 							const taskList = [];
 							var taskInst = undefined;
@@ -273,36 +306,68 @@ function resume(task, outcome) {
 								var disagreed = tl.filter(x => x == "rejected").length;
 								var other = tl.filter(x => x.match(/^(approved|rejected)$/)).length;
 								var allAgreed = agreed === tl.length;
-								console.log("taskList:", tl, "length:", tl.length,"all equals?", allEqual, allEqual? tl[0]: "", "Majority:", majority, "All agreed?", allAgreed)
+								var all = allEqual? tl[0] : "rejected";
+								console.log("taskList:", tl, "length:", tl.length,"all equals?", allEqual, allEqual? tl[0]: "", "Majority:", majority, "All:", all)
+
+								var outcomeByCriteria = ""
+								if (task.data.criteria == "Majority") {
+									outcomeByCriteria = majority;
+								} else if (task.data.criteria == "All") {
+									outcomeByCriteria = tl.includes("")? "" : all;
+								}
+
+								if (outcomeByCriteria == "") {
+									reject("Criteria not fulfilled")
+								} else {
+									// Criteria fulfilled, resume workflow...
+									jobData.definition.actions[0].configuration.properties.outcome = outcomeByCriteria;
+									flowQueue.getJobLogs(jobId)
+										.then(logs => {
+											const jobLogs = {...logs}
+											job.remove();
+											flowQueue.add(jobData, {jobId: jobId})
+												.then(resumedJob => {
+													jobLogs.logs.forEach(log => {
+														resumedJob.log(log);
+													});
+												})
+												.then(resumedJob => {
+													//res.send(resumedJob)
+													console.log(`Job ${jobId} resumed`)
+													resolve(`Workflow instance ${jobId} resumed as "${outcomeByCriteria}"`)
+												})
+										}).catch(err => {
+											reject(err)
+										})
+								}
 							})
 						}
 					})
 					.catch(alert => {
 						console.log("(ops!)alert:", alert);
 					})
+			} else {
+				// Approval concluded, resume workflow...
+				jobData.definition.actions[0].configuration.properties.outcome = outcome;
+				flowQueue.getJobLogs(jobId)
+					.then(logs => {
+						const jobLogs = {...logs}
+						job.remove();
+						flowQueue.add(jobData, {jobId: jobId})
+							.then(resumedJob => {
+								jobLogs.logs.forEach(log => {
+									resumedJob.log(log);
+								});
+							})
+							.then(resumedJob => {
+								//res.send(resumedJob)
+								console.log(`Job ${jobId} resumed`)
+								resolve(`Workflow instance ${jobId} resumed as "${outcome}"`)
+							})
+					}).catch(err => {
+						reject(err)
+					})
 			}
-			
-			// Approval concluded, resume workflow...
-			const jobData = {...job.data};
-			jobData.definition.actions[0].configuration.properties.outcome = outcome;
-			flowQueue.getJobLogs(jobId)
-				.then(logs => {
-					const jobLogs = {...logs}
-					job.remove();
-					flowQueue.add(jobData, {jobId: jobId})
-						.then(resumedJob => {
-							jobLogs.logs.forEach(log => {
-								resumedJob.log(log);
-							});
-						})
-						.then(resumedJob => {
-							//res.send(resumedJob)
-							console.log(`Job ${jobId} resumed`)
-							resolve(`Workflow instance ${jobId} resumed as "${outcome}"`)
-						})
-				}).catch(err => {
-					reject(err)
-				})
 		}
 	});
 
@@ -315,5 +380,5 @@ function resume(task, outcome) {
 	var arr1 = Object.keys( map ).map(function ( key ) { return map[key]; });
 	var max = Math.max.apply( null, arr1 );
 	var filtered = keys.filter(key => {return map[key] === max})
-	return (filtered.length > 1?"":filtered[0])
+	return (arr.includes("") ? "" : filtered.length > 1 ? "rejected": filtered[0])
   }
