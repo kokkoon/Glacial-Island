@@ -259,7 +259,7 @@ module.exports = app => {
 			//Approval criteria check... then resume or not
 			return resume(waitingJob[0], outcome)
 				.then(async ans => {
-					console.log(`Resumed: ${ans.resumed}, message: ${ans.message}`);
+					console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
 					if (ans.resumed) {
 						var taskGroupNumber = waitingJob[0].id.match(/(?<=\-).+?(?=\-)/);
 						return redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
@@ -273,7 +273,7 @@ module.exports = app => {
 										keys.forEach(async (key, i, array) => {
 											console.log("1. Retriving task:", key, key.match(/([^:]+$)/)[0]);
 											taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
-											taskInst && console.log("1. Task Inst:", taskInst.data.response);
+											taskInst && console.log("1. Task Inst:", taskInst.data.status);
 											taskInst && taskList.push(taskInst);
 											if (!/^(Completed|Closed)$/.test(taskInst.data.status)) {
 												taskInst.data.status = "Closed";
@@ -290,9 +290,11 @@ module.exports = app => {
 										waitingJob[0].data.response = outcome;
 										waitingJob[0].data.updated = Date.now();
 										await waitingJob[0].update(waitingJob[0].data);
-										return `${ans.message}`;
-									})
+										return `${ans.message}...`;
+									});
 
+									console.log("1. right after the getTaskList...");
+									return `...${ans.message}`;
 								} else {
 									waitingJob[0].data.status = "Completed";
 									waitingJob[0].data.response = outcome;
@@ -303,6 +305,9 @@ module.exports = app => {
 									//await waitingJob[0].remove();
 									return `${ans.message}`;
 								}
+							}).catch(e => {
+								console.log(`1. error...${e}`);
+								return `1. error...${e}`;
 							});
 
 					} else {
@@ -315,7 +320,8 @@ module.exports = app => {
 						//await waitingJob[0].remove();
 						return `${ans.message}`;
 					}
-				}).then((ans) => {	//returning to resume clause
+				}).then(ans => {	//returning to resume clause
+					console.log("ans:", ans)
 					return ans;
 				}).catch(err => {
 					console.log(`Error...${err} ${msg}`)
@@ -323,13 +329,13 @@ module.exports = app => {
 				})
 		})
 		.then(replyMsg =>{
-			console.log(replyMsg)
+			console.log(`replyMsg: ${replyMsg}`)
 			twiml.message(replyMsg);
 			res.writeHead(200, {'Content-Type':'text/xml'});
 			res.end(twiml.toString());
 		})
 		.catch(alert => {
-			console.log("(ops!alert:", alert);
+			console.log("ops!alert:", alert);
 			twiml.message('Failed!');
 			res.writeHead(200, {'Content-Type':'text/xml'});
 			res.end(twiml.toString());
