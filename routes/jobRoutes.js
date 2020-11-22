@@ -262,7 +262,7 @@ module.exports = app => {
 					console.log(`Resumed: ${ans.resumed}, message: ${ans.message}`);
 					if (ans.resumed) {
 						var taskGroupNumber = waitingJob[0].id.match(/(?<=\-).+?(?=\-)/);
-						redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
+						return redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 							.then(async keys => {
 								console.log(`1. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
 								keys.splice(keys.indexOf(waitingJob[0].id),1);
@@ -315,7 +315,8 @@ module.exports = app => {
 						//await waitingJob[0].remove();
 						return `${ans.message}`;
 					}
-					
+				}).then((ans) => {	//returning to resume clause
+					return ans;
 				}).catch(err => {
 					console.log(`Error...${err} ${msg}`)
 					return `Error... ${err}`
