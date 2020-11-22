@@ -293,8 +293,10 @@ module.exports = app => {
 										return `${ans.message}...`;
 									});
 
-									console.log("1. right after the getTaskList...");
-									return `...${ans.message}`;
+									getTaskList.then(answer => {
+										console.log("1. right after the getTaskList...", answer);
+										return `...${ans.message}`;
+									});
 								} else {
 									waitingJob[0].data.status = "Completed";
 									waitingJob[0].data.response = outcome;
