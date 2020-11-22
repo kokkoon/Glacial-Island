@@ -285,7 +285,7 @@ module.exports = app => {
 										})
 									});
 
-									getTaskList.then((tl) => {
+									getTaskList.then(async (tl) => {
 										waitingJob[0].data.status = "Completed";
 										waitingJob[0].data.response = outcome;
 										waitingJob[0].data.updated = Date.now();
