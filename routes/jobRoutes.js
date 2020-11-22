@@ -204,43 +204,40 @@ module.exports = app => {
 				console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
 				taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
 				//console.log(taskInst)
-				taskInst && taskList.push({key: key, data: taskInst.data});
+				taskInst && taskList.push({id: taskInst.id, timestamp: taskInst.timestamp, key: key, data: taskInst.data, task: taskInst});
 				if (i === array.length -1) resolve(taskList);
 			})
 		})
 
 		getTaskList.then((tl) => {
-			res.json({"status": true, "data": tl, "status_code":200})
+			res.status(200).send(tl)
 		})
 	})
 	.catch(alert => {
 		console.log("(ops!)alert:", alert);
 		res.json({ "status": false, "message": alert, "status_code": 401})
 	})
-	/*
-	redisqueries.allkeys(`bull:${TASK_QUEUE}:${owner[0]}-*`)
-		.then(async keys => {
-			const taskList = [];
-			var taskInst = undefined;
-			var getTaskList = new Promise((resolve, reject) => {
-				keys.forEach(async (key, i, array) => {
-					console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
-					taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
-					//console.log(taskInst)
-					taskInst && taskList.push({key: key, data: taskInst.data});
-					if (i === array.length -1) resolve(taskList);
-				})
-			})
+  })
 
-			getTaskList.then((tl) => {
-				res.json({"status": true, "data": tl, "status_code":200})
-			})
+  app.patch('/task/:id/:outcome', Auth.Authenticate, async function(req, res) {
+	const id = req.params.id;
+	const outcome = req.params.outcome;
+	var taskInst = undefined;
+	console.log("Retriving task:", id);
+	taskInst = await taskQueue.getJob(id);
+
+	resume(taskInst, outcome)
+		.then(async ans => {
+			console.log("Resumed message:", ans)
+			taskInst.data.status = "Completed";
+			taskInst.data.response = outcome;
+			taskInst.data.updated = Date.now();
+			await taskInst.update(waitingJob[0].data);
+			res.status(200).send(`${ans}`);
+		}).catch(err => {
+			console.log(`Error patching task...${err}`)
+			res.status(501).send({status: 501, error: err})
 		})
-		.catch(alert => {
-			console.log("(ops!)alert:", alert);
-			res.json({ "status": false, "message": alert, "status_code": 401})
-		})
-	*/
   })
 
   app.post('/sms/reply', function (req, res) {
@@ -262,15 +259,63 @@ module.exports = app => {
 			//Approval criteria check... then resume or not
 			return resume(waitingJob[0], outcome)
 				.then(async ans => {
-					console.log("Resumed message:", ans)
-					waitingJob[0].data.status = "Completed";
-					waitingJob[0].data.response = outcome;
-					waitingJob[0].data.updated = Date.now();
-					await waitingJob[0].update(waitingJob[0].data);
-					//await waitingJob[0].promote();
-					//await waitingJob[0].moveToCompleted('completed', true, true)
-					//await waitingJob[0].remove();
-					return `${ans}`;
+					console.log(`Resumed: ${ans.resumed}, message: ${ans.message}`);
+					if (ans.resumed) {
+						var taskGroupNumber = waitingJob[0].id.match(/(?<=\-).+?(?=\-)/);
+						redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
+							.then(async keys => {
+								console.log(`1. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
+								keys.splice(keys.indexOf(waitingJob[0].id),1);
+								if (keys.length > 0)  {
+									const taskList = [];
+									var taskInst = undefined;
+									var getTaskList = new Promise((resolve, reject) => {
+										keys.forEach(async (key, i, array) => {
+											console.log("1. Retriving task:", key, key.match(/([^:]+$)/)[0]);
+											taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
+											taskInst && console.log("1. Task Inst:", taskInst.data.response);
+											taskInst && taskList.push(taskInst);
+											if (!/^(Completed|Closed)$/.test(taskInst.data.status)) {
+												taskInst.data.status = "Closed";
+												taskInst.data.response = outcome;
+												taskInst.data.updated = Date.now();
+												await taskInst.update(taskInst.data);
+											}
+											if (i === array.length -1) resolve(taskList);
+										})
+									});
+
+									getTaskList.then((tl) => {
+										waitingJob[0].data.status = "Completed";
+										waitingJob[0].data.response = outcome;
+										waitingJob[0].data.updated = Date.now();
+										await waitingJob[0].update(waitingJob[0].data);
+										return `${ans.message}`;
+									})
+
+								} else {
+									waitingJob[0].data.status = "Completed";
+									waitingJob[0].data.response = outcome;
+									waitingJob[0].data.updated = Date.now();
+									await waitingJob[0].update(waitingJob[0].data);
+									//await waitingJob[0].promote();
+									//await waitingJob[0].moveToCompleted('completed', true, true)
+									//await waitingJob[0].remove();
+									return `${ans.message}`;
+								}
+							});
+
+					} else {
+						waitingJob[0].data.status = "Completed";
+						waitingJob[0].data.response = outcome;
+						waitingJob[0].data.updated = Date.now();
+						await waitingJob[0].update(waitingJob[0].data);
+						//await waitingJob[0].promote();
+						//await waitingJob[0].moveToCompleted('completed', true, true)
+						//await waitingJob[0].remove();
+						return `${ans.message}`;
+					}
+					
 				}).catch(err => {
 					console.log(`Error...${err} ${msg}`)
 					return `Error... ${err}`
@@ -312,11 +357,11 @@ function resume(task, outcome) {
 			// Majority = highest vote or "Reject" (i.e. equal vote = rejected)
 			// All = all must agreed on a decision to complete, or it will be rejected
 			*/
+			var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
 			if (task.data.criteria!="Anyone") {  
-				var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
 				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 					.then(async keys => {
-						console.log(`Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
+						console.log(`2. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
 						keys.splice(keys.indexOf(task.id),1);
 						if (keys.length > 0)  {
 							const taskList = [];
@@ -350,7 +395,7 @@ function resume(task, outcome) {
 								}
 
 								if (outcomeByCriteria == "") {
-									resolve(`${outcome}, pending completion criteria!`)
+									resolve({resumed: false, message: `${outcome}, pending completion criteria!`})
 								} else {
 									// Criteria fulfilled, resume workflow...
 									jobData.definition.actions[0].configuration.properties.outcome = outcomeByCriteria;
@@ -367,13 +412,34 @@ function resume(task, outcome) {
 												.then(resumedJob => {
 													//res.send(resumedJob)
 													console.log(`Job ${jobId} resumed`)
-													resolve(`Workflow instance ${jobId} resumed as "${outcomeByCriteria}"`)
+													resolve({resumed: true, message: `Workflow instance ${jobId} resumed as "${outcomeByCriteria}"`})
 												})
 										}).catch(err => {
 											reject(err)
 										})
 								}
 							})
+						} else {
+							// The only assignee, resume workflow...
+							jobData.definition.actions[0].configuration.properties.outcome = outcome;
+							flowQueue.getJobLogs(jobId)
+								.then(logs => {
+									const jobLogs = {...logs}
+									job.remove();
+									flowQueue.add(jobData, {jobId: jobId})
+										.then(resumedJob => {
+											jobLogs.logs.forEach(log => {
+												resumedJob.log(log);
+											});
+										})
+										.then(resumedJob => {
+											//res.send(resumedJob)
+											console.log(`Job ${jobId} resumed`)
+											resolve({resumed: true, message: `Workflow instance ${jobId} resumed as "${outcome}"`})
+										})
+								}).catch(err => {
+									reject(err)
+								})
 						}
 					})
 					.catch(alert => {
@@ -395,7 +461,7 @@ function resume(task, outcome) {
 							.then(resumedJob => {
 								//res.send(resumedJob)
 								console.log(`Job ${jobId} resumed`)
-								resolve(`Workflow instance ${jobId} resumed as "${outcome}"`)
+								resolve({resumed: true, message: `Workflow instance ${jobId} resumed as "${outcome}"`})
 							})
 					}).catch(err => {
 						reject(err)
