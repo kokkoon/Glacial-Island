@@ -262,7 +262,7 @@ module.exports = app => {
 					console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
 					if (ans.resumed) {
 						var taskGroupNumber = waitingJob[0].id.match(/(?<=\-).+?(?=\-)/);
-						return redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
+						redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 							.then(async keys => {
 								console.log(`1. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
 								keys.splice(keys.indexOf(waitingJob[0].id),1);
@@ -294,7 +294,7 @@ module.exports = app => {
 									});
 
 									getTaskList.then(answer => {
-										console.log("1. right after the getTaskList...", answer);
+										console.log("1. right after the getTaskList...");
 										return `...${ans.message}`;
 									});
 								} else {
