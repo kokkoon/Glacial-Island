@@ -322,9 +322,9 @@ module.exports = app => {
 						//await waitingJob[0].remove();
 						return `${ans.message}`;
 					}
-				}).then(ans => {	//returning to resume clause
-					console.log("ans:", ans)
-					return ans;
+				//}).then(ans => {	//returning to resume clause
+				//	console.log("ans:", ans)
+				//	return ans;
 				}).catch(err => {
 					console.log(`Error...${err} ${msg}`)
 					return `Error... ${err}`
