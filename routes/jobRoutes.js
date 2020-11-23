@@ -260,7 +260,7 @@ module.exports = app => {
 			if (waitingJob.length<1) return `There were no pending task for you`;
 			const outcome = msg.match(/App/i) ? 'approved': msg.match(/Rej/i) ? 'rejected':undefined;
 			console.log("User's response:", outcome);
-			
+
 			var replyMsg = "";
 			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
 			
@@ -269,7 +269,7 @@ module.exports = app => {
 					console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
 					if (ans.resumed) {
 						// completion criteria met, update other tasks...
-						closePendingTasks(taskInst, outcome)
+						closePendingTasks(waitingJob[0], outcome)
 					} 
 					
 					waitingJob[0].data.status = "Completed";
