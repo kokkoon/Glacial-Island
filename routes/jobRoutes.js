@@ -223,8 +223,10 @@ module.exports = app => {
 	const id = req.params.id;
 	const outcome = req.params.outcome;
 	var taskInst = undefined;
-	console.log("Retriving task:", id);
+	console.log("Retriving task:", id, " outcome:", outcome);
 	taskInst = await taskQueue.getJob(id);
+	outcome = outcome.match(/App/i) ? 'approved': outcome.match(/Rej/i) ? 'rejected':outcome;
+	console.log("User's response:", outcome)
 
 	resume(taskInst, outcome)
 		.then(async ans => {
@@ -252,7 +254,7 @@ module.exports = app => {
 			var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 			console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
 			if (waitingJob.length<1) return `There were no pending task for you`;
-			const outcome = msg.match(/Ap/i) ? 'approved': msg.match(/Re/i) ? 'rejected':undefined;
+			const outcome = msg.match(/App/i) ? 'approved': msg.match(/Rej/i) ? 'rejected':undefined;
 			console.log("User's response:", outcome)
 			var replyMsg = "";
 			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
@@ -370,14 +372,15 @@ function resume(task, outcome) {
 			if (task.data.criteria!="Anyone") {  
 				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 					.then(async keys => {
+						console.log(keys, task.queue.keys['']+task.id)
 						console.log(`2. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
-						keys.splice(keys.indexOf(task.id),1);
+						keys.splice(keys.indexOf(task.queue.keys['']+task.id),1);
 						if (keys.length > 0)  {
 							const taskList = [];
 							var taskInst = undefined;
 							var getTaskList = new Promise((resolve, reject) => {
 								keys.forEach(async (key, i, array) => {
-									console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
+									console.log("2. Retriving task:", key, key.match(/([^:]+$)/)[0]);
 									taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
 									taskInst && console.log("Task Inst:", taskInst.data.response);
 									taskInst && taskList.push(taskInst.data.response);
@@ -386,6 +389,7 @@ function resume(task, outcome) {
 							})
 
 							getTaskList.then((tl) => {
+								console.log(tl)
 								tl.push(outcome);
 								var allEqual = tl.every(v => v === tl[0]);
 								var majority = majorityElement(tl);
@@ -485,7 +489,7 @@ function resume(task, outcome) {
 	let map = {}
 	arr.map(v =>  map[v] = map[v] ? map[v] + 1 : 1 );
 	var keys = Object.keys(map);
-	var arr1 = Object.keys( map ).map(function ( key ) { return map[key]; });
+	var arr1 = Object.keys(map).map(function ( key ) { return map[key]; });
 	var max = Math.max.apply( null, arr1 );
 	var filtered = keys.filter(key => {return map[key] === max})
 	return (arr.includes("") ? "" : filtered.length > 1 ? "rejected": filtered[0])
