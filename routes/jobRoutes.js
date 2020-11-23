@@ -221,7 +221,7 @@ module.exports = app => {
 
   app.patch('/task/:id/:outcome', Auth.Authenticate, async function(req, res) {
 	const id = req.params.id;
-	const outcome = req.params.outcome;
+	var outcome = req.params.outcome;
 	var taskInst = undefined;
 	console.log("Retriving task:", id, " outcome:", outcome);
 	taskInst = await taskQueue.getJob(id);
@@ -230,11 +230,15 @@ module.exports = app => {
 
 	resume(taskInst, outcome)
 		.then(async ans => {
+			if (ans.resumed) {
+				// completion criteria met, update other tasks...
+				closePendingTasks(taskInst, outcome)
+			}
 			console.log("Resumed message:", ans)
 			taskInst.data.status = "Completed";
 			taskInst.data.response = outcome;
 			taskInst.data.updated = Date.now();
-			await taskInst.update(waitingJob[0].data);
+			await taskInst.update(taskInst.data);
 			res.status(200).send(`${ans}`);
 		}).catch(err => {
 			console.log(`Error patching task...${err}`)
@@ -255,78 +259,28 @@ module.exports = app => {
 			console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
 			if (waitingJob.length<1) return `There were no pending task for you`;
 			const outcome = msg.match(/App/i) ? 'approved': msg.match(/Rej/i) ? 'rejected':undefined;
-			console.log("User's response:", outcome)
+			console.log("User's response:", outcome);
+			
 			var replyMsg = "";
 			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
-			//Approval criteria check... then resume or not
+			
 			return resume(waitingJob[0], outcome)
 				.then(async ans => {
 					console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
 					if (ans.resumed) {
-						var taskGroupNumber = waitingJob[0].id.match(/(?<=\-).+?(?=\-)/);
-						redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
-							.then(async keys => {
-								console.log(`1. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
-								keys.splice(keys.indexOf(waitingJob[0].id),1);
-								if (keys.length > 0)  {
-									const taskList = [];
-									var taskInst = undefined;
-									var getTaskList = new Promise((resolve, reject) => {
-										keys.forEach(async (key, i, array) => {
-											console.log("1. Retriving task:", key, key.match(/([^:]+$)/)[0]);
-											taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
-											taskInst && console.log("1. Task Inst:", taskInst.data.status);
-											taskInst && taskList.push(taskInst);
-											if (!/^(Completed|Closed)$/.test(taskInst.data.status)) {
-												taskInst.data.status = "Closed";
-												taskInst.data.response = outcome;
-												taskInst.data.updated = Date.now();
-												await taskInst.update(taskInst.data);
-											}
-											if (i === array.length -1) resolve(taskList);
-										})
-									});
-
-									getTaskList.then(async (tl) => {
-										waitingJob[0].data.status = "Completed";
-										waitingJob[0].data.response = outcome;
-										waitingJob[0].data.updated = Date.now();
-										await waitingJob[0].update(waitingJob[0].data);
-										return `${ans.message}...`;
-									});
-
-									getTaskList.then(answer => {
-										console.log("1. right after the getTaskList...");
-										return `...${ans.message}`;
-									});
-								} else {
-									waitingJob[0].data.status = "Completed";
-									waitingJob[0].data.response = outcome;
-									waitingJob[0].data.updated = Date.now();
-									await waitingJob[0].update(waitingJob[0].data);
-									//await waitingJob[0].promote();
-									//await waitingJob[0].moveToCompleted('completed', true, true)
-									//await waitingJob[0].remove();
-									return `${ans.message}`;
-								}
-							}).catch(e => {
-								console.log(`1. error...${e}`);
-								return `1. error...${e}`;
-							});
-
-					} else {
-						waitingJob[0].data.status = "Completed";
-						waitingJob[0].data.response = outcome;
-						waitingJob[0].data.updated = Date.now();
-						await waitingJob[0].update(waitingJob[0].data);
-						//await waitingJob[0].promote();
-						//await waitingJob[0].moveToCompleted('completed', true, true)
-						//await waitingJob[0].remove();
-						return `${ans.message}`;
-					}
-				//}).then(ans => {	//returning to resume clause
-				//	console.log("ans:", ans)
-				//	return ans;
+						// completion criteria met, update other tasks...
+						closePendingTasks(taskInst, outcome)
+					} 
+					
+					waitingJob[0].data.status = "Completed";
+					waitingJob[0].data.response = outcome;
+					waitingJob[0].data.updated = Date.now();
+					await waitingJob[0].update(waitingJob[0].data);
+					//await waitingJob[0].promote();
+					//await waitingJob[0].moveToCompleted('completed', true, true)
+					//await waitingJob[0].remove();
+					return `${ans.message}`;
+						
 				}).catch(err => {
 					console.log(`Error...${err} ${msg}`)
 					return `Error... ${err}`
@@ -349,6 +303,33 @@ module.exports = app => {
 		//res.set('Content-Type', 'text/xml')
   })
 
+}
+
+function closePendingTasks(task, outcome) {
+	var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
+	redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
+		.then(async keys => {
+			console.log(`3. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
+			keys.splice(keys.indexOf(task.queue.keys['']+task.id),1);
+			
+			if (keys.length > 0)  {
+				var taskInst = undefined;
+				var getTaskList = new Promise((resolve, reject) => {
+					keys.forEach(async (key, i, array) => {
+						console.log("3. Retriving task:", key, key.match(/([^:]+$)/)[0]);
+						taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
+						taskInst && console.log("3. Task Inst:", taskInst.id, " response:", taskInst.data.response);
+						if (taskInst.data.status !== "Completed" || taskInst.data.status !== "Closed") {
+							taskInst.data.status = "Closed";
+							taskInst.data.response = outcome;
+							taskInst.data.updated = Date.now();
+							await taskInst.update(taskInst.data);
+						}
+						if (i === array.length -1) resolve(taskList);
+					})
+				})
+			}
+		})
 }
 
 function resume(task, outcome) {
