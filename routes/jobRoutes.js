@@ -319,13 +319,13 @@ function closePendingTasks(task, outcome) {
 						console.log("3. Retriving task:", key, key.match(/([^:]+$)/)[0]);
 						taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
 						taskInst && console.log("3. Task Inst:", taskInst.id, " response:", taskInst.data.response);
-						if (taskInst.data.status !== "Completed" || taskInst.data.status !== "Closed") {
+						if (taskInst.data.status !== "Completed" && taskInst.data.status !== "Closed") {
 							taskInst.data.status = "Closed";
 							taskInst.data.response = outcome;
 							taskInst.data.updated = Date.now();
 							await taskInst.update(taskInst.data);
 						}
-						if (i === array.length -1) resolve(taskList);
+						if (i === array.length -1) resolve(keys);
 					})
 				})
 			}
