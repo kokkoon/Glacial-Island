@@ -373,7 +373,7 @@ function resume(task, outcome) {
 								console.log(tl)
 								tl.push(outcome);
 								var allEqual = tl.every(v => v === tl[0]);
-								var majority = majorityElement(tl);
+								var majority = majWithKKalgorithm(tl);
 								var agreed = tl.filter(x => x == "approved").length;
 								var disagreed = tl.filter(x => x == "rejected").length;
 								var other = tl.filter(x => x.match(/^(approved|rejected)$/)).length;
@@ -466,12 +466,26 @@ function resume(task, outcome) {
 
   }
 
-  function majorityElement(arr) {
-	let map = {}
-	arr.map(v =>  map[v] = map[v] ? map[v] + 1 : 1 );
-	var keys = Object.keys(map);
-	var arr1 = Object.keys(map).map(function ( key ) { return map[key]; });
-	var max = Math.max.apply( null, arr1 );
-	var filtered = keys.filter(key => {return map[key] === max})
-	return (arr.includes("") ? "" : filtered.length > 1 ? "rejected": filtered[0])
+  function majWithKKalgorithm(nums) {
+	let count = {};
+  
+	for (let elem of nums) { count[elem] = count[elem] ? count[elem] + 1 : 1 }
+	
+	let candidates = Object.keys(count)
+	let votes = candidates.map(k => { return count[k]})
+	//console.log("candidates:", candidates, "votes:", votes)
+	
+	let max = Math.max(...votes)  //highest votes
+	
+	//console.log("Total candidates:", candidates.length)
+	//console.log("Uncountered votes:", count[""])
+	//console.log("Highest vote:", max)
+	//console.log("Total votes:", nums.length - count[""])
+	
+	var winners = candidates.filter(key => {return count[key] === max})
+	//console.log("winners:", winners)
+	
+	let theWinner = (winners.length == 1) && (nums.length - max < max) ? winners[0] : count[""] == null ? "rejected": "none"
+  
+	return theWinner;
   }
