@@ -388,7 +388,7 @@ function resume(task, outcome) {
 									outcomeByCriteria = tl.includes("")? "" : all;
 								}
 
-								if (outcomeByCriteria == "") {
+								if (outcomeByCriteria == "none") {
 									resolve({resumed: false, message: `${outcome}, pending completion criteria!`})
 								} else {
 									// Criteria fulfilled, resume workflow...
