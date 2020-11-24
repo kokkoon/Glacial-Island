@@ -246,6 +246,11 @@ module.exports = app => {
 		})
   })
 
+  app.post('/email/notify', function(req, res) {
+	  console.log(req.header, req.body);
+	  res.status(200).send({status: 200, message: "Success"})
+  })
+
   app.post('/sms/reply', function (req, res) {
 	  const twiml = new MessagingResponse();
 	  const smsCount = req.session.counter || 0;
