@@ -473,19 +473,21 @@ function resume(task, outcome) {
 	
 	let candidates = Object.keys(count)
 	let votes = candidates.map(k => { return count[k]})
-	//console.log("candidates:", candidates, "votes:", votes)
+	console.log("candidates:", candidates, "votes:", votes)
 	
 	let max = Math.max(...votes)  //highest votes
+	//let maxCount = votes.map(v => v == max? 1 : 0).reduce((a,b) => a+b, 0)
+	//console.log(`highest=${max}, occurs: ${maxCount} times`)
 	
-	//console.log("Total candidates:", candidates.length)
-	//console.log("Uncountered votes:", count[""])
-	//console.log("Highest vote:", max)
-	//console.log("Total votes:", nums.length - count[""])
+	console.log("Total candidates:", candidates.length)
+	console.log("Uncountered votes:", count[""])
+	console.log("Highest vote:", max)
+	console.log("Total votes:", nums.length - count[""])
 	
 	var winners = candidates.filter(key => {return count[key] === max})
-	//console.log("winners:", winners)
+	console.log("winners:", winners)
 	
-	let theWinner = (winners.length == 1) && (nums.length - max < max) ? winners[0] : count[""] == null ? "rejected": "none"
+	let theWinner = (winners.length == 1) && (nums.length - max < max) ? winners[0] : count[""] == null ? "rejected": (nums.length - count["rejected"] <= count["rejected"])? "rejected" : "none" 
   
 	return theWinner;
   }
