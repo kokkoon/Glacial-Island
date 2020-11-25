@@ -26,7 +26,7 @@ redisqueries.getAllQueues(resData => {
 	app.use('/queue_dashboard', qDashboard);
 })
 
-const queueDashboard = GUI({
+const dashboard = GUI({
     Bull,
 	queues: [
 		{
@@ -65,12 +65,12 @@ const queueDashboard = GUI({
 			url: keys.redisURL 
         },
 		{
-			name: "SCHEDULE-DESKTOP-HO2F260",
+			name: "SCHEDULE@glozic.com",
 			hostId: "flow",
 			url: keys.redisURL 
         },
 		{
-			name: "SCHEDULE@ip-10-0-0-155.ap-southeast-1.compute.internal",
+			name: "SCHEDULE@flowngin.com",
 			hostId: "flow",
 			url: keys.redisURL 
         }
@@ -79,6 +79,9 @@ const queueDashboard = GUI({
 	basePath: "/",
 	disableListen: true
 });
+
+
+app.use('/dashboard', dashboard);
 
 app.use(session({
 	secret:'anyt-string-but-to-keep-secret',

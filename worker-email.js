@@ -1,4 +1,3 @@
-//import { SendMail } from './services/SendMail';
 const keys = require('./config/keys');
 const nodemailer = require('nodemailer');
 const smtpTransport = require("nodemailer-smtp-transport");
@@ -6,6 +5,7 @@ const NODE_ENV = process.env.NODE_ENV;
 const Bull = require("bull");
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
 const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL);
+const SendMail = require('./services/SendMail');
 
 emailQueue.process(function(job, done) {
   console.log("Processing job id:", job.id)
@@ -40,7 +40,7 @@ emailQueue.process(function(job, done) {
     outcome = "approved"
   }
   mailOptions.emailBody = outcome;
-  sendEmail(mailOptions);
+  SendMail.sendEmail(mailOptions);
 
   done();
 });
