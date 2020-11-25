@@ -6,8 +6,10 @@ const NODE_ENV = process.env.NODE_ENV;
 const Bull = require("bull");
 const QUEUE_NAME= 'FLOW';
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
+const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
 const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
+const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL);
 const Auth = require("../services/authentication");
 const sample_flow_definition = require('../config/wf-definition-example.json');
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
@@ -247,8 +249,14 @@ module.exports = app => {
   })
 
   app.post('/email/notify', function(req, res) {
-	  console.log(req.header, req.body);
-	  res.status(200).send({status: 200, message: "Success"})
+    let message = req.body;
+    emailQueue.add(message)
+        .then(result => {
+            res.status(200).send("Success");
+        })
+        .catch(alert => {
+            res.status(401).send(alert);
+        })
   })
 
   app.post('/sms/reply', function (req, res) {

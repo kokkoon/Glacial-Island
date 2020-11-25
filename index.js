@@ -10,6 +10,7 @@ const redisqueries = require('./services/redisqueries');
 
 //const serviceWorker = require('./worker-service');
 //const taskWorker = require('./worker-task');
+const emailWorker = require('./worker-email');
 
 
 redisqueries.getAllQueues(resData => {
@@ -24,18 +25,6 @@ redisqueries.getAllQueues(resData => {
 	
 	app.use('/queue_dashboard', qDashboard);
 })
-
-/*redisqueries.scan(resData => {
-	const qDashboard = GUI({
-		Bull,
-		queues: resData.map(v => ({name: v, hostId: "flow", url: keys.redisURL}))
-	}, {
-		basePath: "/",
-		disableListen: true
-	});
-	
-	app.use('/queue_dashboard', qDashboard);
-})*/
 
 const queueDashboard = GUI({
     Bull,
@@ -99,10 +88,6 @@ app.use(session({
     saveUninitialized: true
 }));
 require('./routes/jobRoutes')(app);
-
-
-//app.use('/queue_dashboard', queueDashboard);
-
 
 const PORT = process.env.PORT || '4000';
 app.listen(PORT, () => {
