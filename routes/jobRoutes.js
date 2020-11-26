@@ -148,7 +148,7 @@ module.exports = app => {
 
   })
 
-  app.get('/instances/:flowId', function(req, res) {
+  app.get('/instances/:flowId', Auth.Authenticate, function(req, res) {
 	const flowId = req.params.flowId;
 
 	redisqueries.allkeys(`bull:FLOW:${flowId}-*[^s]`)
