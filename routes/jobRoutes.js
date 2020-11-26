@@ -16,6 +16,7 @@ const MessagingResponse = require('twilio').twiml.MessagingResponse;
 const redis = require('redis');
 const async = require('async');
 const redisqueries = require('../services/redisqueries');
+const taskqueries = require('../services/taskqueries');
 const { doesNotMatch } = require('assert');
 
 
@@ -230,11 +231,11 @@ module.exports = app => {
 	outcome = outcome.match(/App/i) ? 'approved': outcome.match(/Rej/i) ? 'rejected':outcome;
 	console.log("User's response:", outcome)
 
-	resume(taskInst, outcome)
+	taskqueries.resume(taskInst, outcome)
 		.then(async ans => {
 			if (ans.resumed) {
 				// completion criteria met, update other tasks...
-				closePendingTasks(taskInst, outcome)
+				taskqueries.closePendingTasks(taskInst, outcome)
 			}
 			console.log("Resumed message:", ans)
 			taskInst.data.status = "Completed";
@@ -277,12 +278,12 @@ module.exports = app => {
 			var replyMsg = "";
 			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
 			
-			return resume(waitingJob[0], outcome)
+			return taskqueries.resume(waitingJob[0], outcome)
 				.then(async ans => {
 					console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
 					if (ans.resumed) {
 						// completion criteria met, update other tasks...
-						closePendingTasks(waitingJob[0], outcome)
+						taskqueries.closePendingTasks(waitingJob[0], outcome)
 					} 
 					
 					waitingJob[0].data.status = "Completed";
