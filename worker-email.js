@@ -45,7 +45,7 @@ emailQueue.process(function(job, done) {
 
   taskQueue.getJobs(['delayed'], 0, 100)
     .then(async result => {
-			var waitingJob = result.filter(obj => {return obj.data.owner === job.data.fromAddress})
+			var waitingJob = result.filter(obj => {return obj.data.owner.trim() === job.data.fromAddress})
 			console.log(`Total: ${result.length}, # of waiting jobs for ${job.data.fromAddress}`, waitingJob.length)
       if (waitingJob.length<1) return `There were no pending task for you`;
       if (outcome === undefined) return `Failed interpreting your reply`;
