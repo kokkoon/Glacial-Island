@@ -197,7 +197,7 @@ const majWithKKalgorithm = (nums) => {
 	var winners = candidates.filter(key => {return count[key] === max})
 	console.log("winners:", winners)
 	
-	let theWinner = (winners.length == 1) && (nums.length - max < max) ? winners[0] : count[""] == null ? "rejected": (nums.length - count["rejected"] <= count["rejected"])? "rejected" : "none" 
+	let theWinner = (winners.length == 1) && (nums.length - max < max) && (winners[0] != "") ? winners[0] : count[""] == null ? "rejected": (nums.length - count["rejected"] <= count["rejected"])? "rejected" : "none" 
   
 	return theWinner;
 }
