@@ -14,16 +14,16 @@ const closePendingTasks = (task, outcome) => {
 	var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
 	redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 		.then(async keys => {
-			console.log(`3. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
+			console.log(`TASKQ 3. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
 			keys.splice(keys.indexOf(task.queue.keys['']+task.id),1);
 			
 			if (keys.length > 0)  {
 				var taskInst = undefined;
 				var getTaskList = new Promise((resolve, reject) => {
 					keys.forEach(async (key, i, array) => {
-						console.log("3. Retriving task:", key, key.match(/([^:]+$)/)[0]);
+						console.log("TASKQ 3. Retriving task:", key, key.match(/([^:]+$)/)[0]);
 						taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
-						taskInst && console.log("3. Task Inst:", taskInst.id, " response:", taskInst.data.response);
+						taskInst && console.log("TASKQ 3. Task Inst:", taskInst.id, " response:", taskInst.data.response);
 						if (taskInst.data.status !== "Completed" && taskInst.data.status !== "Closed") {
 							taskInst.data.status = "Closed";
 							taskInst.data.response = outcome;
@@ -59,23 +59,23 @@ const resume = (task, outcome) => {
 				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 					.then(async keys => {
 						console.log(keys, task.queue.keys['']+task.id)
-						console.log(`2. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
+						console.log(`TASKQ 1. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
 						keys.splice(keys.indexOf(task.queue.keys['']+task.id),1);
 						if (keys.length > 0)  {
 							const taskList = [];
 							var taskInst = undefined;
 							var getTaskList = new Promise((resolve, reject) => {
 								keys.forEach(async (key, i, array) => {
-									console.log("2. Retriving task:", key, key.match(/([^:]+$)/)[0]);
+									console.log("TASKQ 1. Retriving task:", key, key.match(/([^:]+$)/)[0]);
 									taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
-									taskInst && console.log("Task Inst:", taskInst.data.response);
+									taskInst && console.log("TASKQ 1. Task Inst:", taskInst.data.response);
 									taskInst && taskList.push(taskInst.data.response);
 									if (i === array.length -1) resolve(taskList);
 								})
 							})
 
 							getTaskList.then((tl) => {
-								console.log(tl)
+								console.log("TASKQ 1.", tl)
 								tl.push(outcome);
 								var allEqual = tl.every(v => v === tl[0]);
 								var majority = majWithKKalgorithm(tl);
@@ -84,7 +84,7 @@ const resume = (task, outcome) => {
 								var other = tl.filter(x => x.match(/^(approved|rejected)$/)).length;
 								var allAgreed = agreed === tl.length;
 								var all = allEqual? tl[0] : "rejected";
-								console.log("taskList:", tl, "length:", tl.length,"all equals?", allEqual, allEqual? tl[0]: "", "Majority:", majority, "All:", all)
+								console.log("TASKQ 1. taskList:", tl, "length:", tl.length,"all equals?", allEqual, allEqual? tl[0]: "", "Majority:", majority, "All:", all)
 
 								var outcomeByCriteria = ""
 								if (task.data.criteria == "Majority") {
@@ -110,7 +110,7 @@ const resume = (task, outcome) => {
 												})
 												.then(resumedJob => {
 													//res.send(resumedJob)
-													console.log(`Job ${jobId} resumed`)
+													console.log(`TASKQ 1. Job ${jobId} resumed`)
 													resolve({resumed: true, message: `Workflow instance ${jobId} resumed as "${outcomeByCriteria}"`})
 												})
 										}).catch(err => {

@@ -16,7 +16,7 @@ const Authenticate = async (req, res, next) => {
             json: true
         }
         request(requestOptions, (error, response, responseBody) => {
-            console.log(responseBody.message);
+            //console.log(responseBody.message);
             if (error) {
                 console.error(error)
             } else if (responseBody.status) {
