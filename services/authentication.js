@@ -16,10 +16,12 @@ const Authenticate = async (req, res, next) => {
             json: true
         }
         request(requestOptions, (error, response, responseBody) => {
-            //console.log(responseBody.message);
+            console.log(responseBody);
             if (error) {
+                console.log(error)
                 console.error(error)
             } else if (responseBody.status) {
+                console.log(responseBody.status)
                 next();
             } else {
                 res.json({ "res": 1, status: false, message: "Header is not correct. Please try again." });
