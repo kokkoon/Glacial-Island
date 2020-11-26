@@ -17,7 +17,7 @@ const Authenticate = async (req, res, next) => {
             json: true
         }
         if (NODE_ENV != "production") {
-            console.log(responseBody.status)
+            console.log("Skipped authentication for non-production environment.")
             next()
         }
         request(requestOptions, (error, response, responseBody) => {
