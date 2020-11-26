@@ -4,8 +4,11 @@ const smtpTransport = require("nodemailer-smtp-transport");
 const NODE_ENV = process.env.NODE_ENV;
 const Bull = require("bull");
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
+const TASK_QUEUE = 'TASK@' + NODE_ENV;
 const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL);
+const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
 const SendMail = require('./services/SendMail');
+const taskqueries = require('./services/taskqueries');
 
 emailQueue.process(function(job, done) {
   console.log("Processing job id:", job.id)
@@ -39,74 +42,46 @@ emailQueue.process(function(job, done) {
   } else {
     outcome = "approved"
   }
-  mailOptions.emailBody = outcome;
-  SendMail.sendEmail(mailOptions);
+
+  taskQueue.getJobs(['delayed'], 0, 100)
+    .then(async result => {
+			var waitingJob = result.filter(obj => {return obj.data.owner === job.data.fromAddress})
+			console.log(`Total: ${result.length}, # of waiting jobs for ${job.data.fromAddress}`, waitingJob.length)
+      if (waitingJob.length<1) return `There were no pending task for you`;
+      if (outcome === undefined) return `Failed interpreting your reply`;
+
+      return taskqueries.resume(waitingJob[0], outcome)
+        .then(async ans => {
+					console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
+					if (ans.resumed) {
+						// completion criteria met, update other tasks...
+						taskqueries.closePendingTasks(waitingJob[0], outcome)
+          } 
+          
+					waitingJob[0].data.status = "Completed";
+					waitingJob[0].data.response = outcome;
+					waitingJob[0].data.updated = Date.now();
+					await waitingJob[0].update(waitingJob[0].data);
+					//await waitingJob[0].promote();
+					//await waitingJob[0].moveToCompleted('completed', true, true)
+					//await waitingJob[0].remove();
+          return `${ans.message}`;
+          
+        }).catch(err => {
+          console.log(`Error...${err}`);
+          return `Error... ${err}`
+        })
+    })
+    .then(replyMsg => {
+      console.log('replyMsg:', replyMsg);
+      mailOptions.emailBody = replyMsg;
+      SendMail.sendEmail(mailOptions);
+    })
+    .catch(alert => {
+      console.log("Ops! alert:", alert);
+      //mailOptions.emailBody = 'Failed processing your reply...';
+      //SendMail.sendEmail(mailOptions);
+    })
 
   done();
 });
-
-const sendEmail = async (payload) => {
-
-  let mailOptions = {
-      from: "", // sender address
-      to: payload.emailTo, // list of receivers
-      subject: payload.emailSubject, // Subject line
-      html: payload.emailBody, // plain text body
-      host: payload.host ? payload.host : "portal"
-  };
-
-  if (mailOptions.html) {
-      await nodemailersendMail(mailOptions)
-  } else {
-      return false;
-  }
-}
-
-var transporter = function (host) {
-  var hostname = host;
-  return new Promise((resolve, reject) => {
-      
-      var smtp = {
-          smtp_server: "email-smtp.ap-southeast-1.amazonaws.com",
-          smtp_port: 587,
-          smtp_auth: {user: "AKIA6QCOO42T3OFY2OXZ", pass: "BGHlOJ7bIjIASUCza/2OxIfPheI+UeyW+nA4m1LVIVAi"},
-          smtp_fromMail: "workflow@glozic.com"
-      }
-      resolve(smtp)
-                      
-  });
-}
-
-var nodemailersendMail = function (mailOptions) {
-  return new Promise((resolve, reject) => {
-      var host = null
-      if (mailOptions.host) {
-          host = mailOptions.host;
-          delete mailOptions.host;
-      }
-
-      transporter(host).then((nodemailersConfig) => {
-          if (nodemailersConfig) {
-              const Transport = nodemailer.createTransport(
-                  smtpTransport({
-                      service: 'smtp',
-                      host: nodemailersConfig.smtp_server,
-                      port: nodemailersConfig.smtp_port,
-                      secureConnection: true,  //secureConnection: true, // true for 465, false for other ports
-                      auth: nodemailersConfig.smtp_auth
-                  })
-              )
-              mailOptions["from"] = `Glozic <` + nodemailersConfig.smtp_fromMail + ">"
-              Transport.sendMail(mailOptions, (error, info) => {
-                  if (error) {
-                      console.log("Email Failed..." + error.message);
-                      resolve(false);
-                  } else {
-                      console.log("Email Sent...");
-                      resolve(true)
-                  }
-              });
-          }
-      });
-  });
-}
