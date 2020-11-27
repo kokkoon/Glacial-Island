@@ -192,7 +192,7 @@ module.exports = app => {
 	console.log("Retriving task:", id);
 	taskQueue.getJob(id)
 		.then(task => {
-			console.log(`Found task id: ${id}`)
+			console.log(`Found task id: ${id}`, task)
 			res.status(200).send(task)
 		}).catch(err => {
 			console.log(`Error retrieving task...${err}`)
