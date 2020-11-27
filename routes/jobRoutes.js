@@ -189,8 +189,7 @@ module.exports = app => {
 
   app.get('/task/:id', function(req, res) {
 	const id = req.params.id;
-	var taskInst = undefined;
-	console.log("Retriving task:", id, " outcome:", outcome);
+	console.log("Retriving task:", id);
 	taskQueue.getJob(id)
 		.then(task => {
 			console.log(`Found task id: ${id}`)
