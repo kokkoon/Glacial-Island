@@ -272,6 +272,33 @@ module.exports = app => {
 		})
   })
 
+  app.patch('/externaltask/:id/:outcome', async function(req, res) {
+	const id = req.params.id;
+	var outcome = req.params.outcome;
+	var taskInst = undefined;
+	console.log("Retriving task:", id, " outcome:", outcome);
+	taskInst = await taskQueue.getJob(id);
+	outcome = outcome.match(/App/i) ? 'approved': outcome.match(/Rej/i) ? 'rejected':outcome;
+	console.log("User's response:", outcome)
+
+	taskqueries.resume(taskInst, outcome)
+		.then(async ans => {
+			if (ans.resumed) {
+				// completion criteria met, update other tasks...
+				taskqueries.closePendingTasks(taskInst, outcome)
+			}
+			console.log("Resumed message:", ans)
+			taskInst.data.status = "Completed";
+			taskInst.data.response = outcome;
+			taskInst.data.updated = Date.now();
+			await taskInst.update(taskInst.data);
+			res.status(200).send(`${ans}`);
+		}).catch(err => {
+			console.log(`Error patching task...${err}`)
+			res.status(501).send({status: 501, error: err})
+		})
+  })
+
   app.post('/email/notify', function(req, res) {
     let message = req.body;
     emailQueue.add(message)
