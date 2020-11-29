@@ -187,10 +187,10 @@ module.exports = app => {
 	
   })
 
-  app.get('/task/:id', async function(req, res) {
+  app.get('/task/:id', function(req, res) {
 	const id = req.params.id;
-	console.log("Retriving task:", id);
-	var task = await taskQueue.getJob(id); /*
+	console.log("Retriving task:", id);/*
+	var task = await taskQueue.getJob(id); 
 		.then(task => {
 			console.log(`Found task id: ${id}`, task)
 			res.status(200).send(task)
@@ -198,8 +198,16 @@ module.exports = app => {
 			console.log(`Error retrieving task...${err}`)
 			res.status(501).send({status: 501, error: err})
 		}) */
-	console.log(`task id: ${id}`, task)
-	res.status(200).send(task)
+	taskQueue.getJob(id)
+		.then(task => {
+			console.log(`Found task id: ${id}`, task)
+			res.status(200).send(task)
+		}).catch(err => {
+			console.log(`Error retrieving task...${err}`)
+			res.status(501).send({status: 501, error: err})
+		})
+	//console.log(`task id: ${id}`, task)
+	//res.status(200).send(task)
   })
 
   app.get('/tasks', function(req, res) {
