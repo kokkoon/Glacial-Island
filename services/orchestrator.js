@@ -175,7 +175,7 @@ var exec1 = async (job, actions) => {
                 console.log(assignee)
                 const taskData = {...first.configuration.properties};
                 taskData.name = first.configuration.properties.taskName; 
-                taskData.owner = assignee;
+                taskData.owner = assignee.trim();
                 taskData.tenant = job.data.tenant;
                 taskData.status = "New";
                 taskData.response = "";
