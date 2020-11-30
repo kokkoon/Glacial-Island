@@ -179,6 +179,7 @@ var exec1 = async (job, actions) => {
                 taskData.tenant = job.data.tenant;
                 taskData.status = "New";
                 taskData.response = "";
+                taskData.taskDesc = first.configuration.properties.taskDesc;
                 taskData.instanceId = job.id;
                 taskData.state = job.data.state;
                 taskData.linkedTask = i===0 ? taskId : taskList[0].data.linkedTask;
