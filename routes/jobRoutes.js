@@ -248,7 +248,7 @@ module.exports = app => {
 		})
 
 		getTaskList.catch(err => {
-			res.status(401).send(err)
+			next(err)
 		})
 	})
 	.catch(alert => {
