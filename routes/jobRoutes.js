@@ -210,7 +210,7 @@ module.exports = app => {
 	//res.status(200).send(task)
   })
 
-  app.get('/tasks', function(req, res) {
+  app.get('/tasks', function(req, res, next) {
 	var owner = req.headers.owner ? req.headers.owner.split(','): "";
 	var getKeys = new Promise((resolve, reject) => {
 		var keys = [];
@@ -245,7 +245,8 @@ module.exports = app => {
 	})
 	.catch(alert => {
 		console.log("(ops!)alert:", alert);
-		res.json({ "status": false, "message": alert, "status_code": 401})
+		//res.json({ "status": false, "message": alert, "status_code": 401})
+		next(err)
 	})
   })
 
