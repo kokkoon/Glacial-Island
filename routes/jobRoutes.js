@@ -210,40 +210,36 @@ module.exports = app => {
 	//res.status(200).send(task)
   })
 
-  app.get('/tasks', function(req, res, next) {
-	var owner = req.headers.owner ? req.headers.owner.split(','): "";
+  app.get('/tasks', function(req, res) {
+	var owner = req.headers.owner ? req.headers.owner : "";
 	console.log("owner", owner)
-	var getKeys = new Promise((resolve, reject) => {
+	var getKeys = new Promise(async (resolve, reject) => {
 		var keys = [];
 		var keylist = undefined
 		try {
-			owner.forEach(async (key, i, array) => {
-				console.log("key", key)
-				keylist = await redisqueries.allkeys(`bull:${TASK_QUEUE}:${key}-*`).catch(e => { console.log(e) })
-				console.log("keylist", keylist)
-				keys = keys.concat(keylist) 
-				if (i === array.length - 1) resolve(keys)
-			});
+			keylist = await redisqueries.allkeys(`bull:${TASK_QUEUE}:${owner}-*`).catch(e => { reject(e) })
+			keys = keys.concat(keylist) 
+			console.log("key length:", keys.length)
+			resolve(keys)
 		} catch (err) {
 			reject({ message: err.message, status: false })
 		}
 	});
 	getKeys.then((allkeys) => {
-		console.log("allkeys", allkeys);
-		if (allKeys && !allKeys.length) res.status(401).send({})
 		const taskList = [];
 		var taskInst = undefined;
 		var getTaskList = new Promise((resolve, reject) => {
 			try {
 				allkeys.forEach(async (key, i, array) => {
-					console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
-					taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
+					console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
+					taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]).catch(e => { reject(e) }); 
 					//console.log(taskInst)
 					taskInst && taskList.push({id: taskInst.id, timestamp: taskInst.timestamp, key: key, data: taskInst.data, task: taskInst});
 					if (i === array.length -1) resolve(taskList);
 				})
 			} catch (err) {
-                reject({ message: err.message, status: false })
+				//reject({ message: err.message, status: false })
+				reject(err)
 			}
 		})
 
@@ -252,11 +248,12 @@ module.exports = app => {
 		})
 
 		getTaskList.catch(err => {
-			next(err)
+			console.log("getTaskList err", err)
+			res.status(401).send({})
 		})
 	})
 	.catch(alert => {
-		console.log("(ops!)alert:", alert);
+		console.log("(ops!) alert:", alert);
 		res.json({ "status": false, "message": alert, "status_code": 401})
 	})
   })
