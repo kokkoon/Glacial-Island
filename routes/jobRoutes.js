@@ -212,12 +212,14 @@ module.exports = app => {
 
   app.get('/tasks', function(req, res, next) {
 	var owner = req.headers.owner ? req.headers.owner.split(','): "";
+	console.log("owner", owner)
 	var getKeys = new Promise((resolve, reject) => {
 		var keys = [];
 		var keylist = undefined
 		try {
 			owner.forEach(async (key, i, array) => {
 				keylist = await redisqueries.allkeys(`bull:${TASK_QUEUE}:${key}-*`)
+				console.log("keylist", keylist)
 				keys = keys.concat(keylist) 
 				if (i === array.length - 1) resolve(keys)
 			});
