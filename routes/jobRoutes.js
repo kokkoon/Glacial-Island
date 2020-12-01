@@ -218,6 +218,7 @@ module.exports = app => {
 		var keylist = undefined
 		try {
 			owner.forEach(async (key, i, array) => {
+				console.log("key", key)
 				keylist = await redisqueries.allkeys(`bull:${TASK_QUEUE}:${key}-*`)
 				console.log("keylist", keylist)
 				keys = keys.concat(keylist) 
