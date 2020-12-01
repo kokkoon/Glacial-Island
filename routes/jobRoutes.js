@@ -219,7 +219,7 @@ module.exports = app => {
 		try {
 			owner.forEach(async (key, i, array) => {
 				console.log("key", key)
-				keylist = await redisqueries.allkeys(`bull:${TASK_QUEUE}:${key}-*`)
+				keylist = await redisqueries.allkeys(`bull:${TASK_QUEUE}:${key}-*`).catch(e => { console.log(e) })
 				console.log("keylist", keylist)
 				keys = keys.concat(keylist) 
 				if (i === array.length - 1) resolve(keys)
