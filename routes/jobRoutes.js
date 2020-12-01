@@ -215,11 +215,15 @@ module.exports = app => {
 	var getKeys = new Promise((resolve, reject) => {
 		var keys = [];
 		var keylist = undefined
-		owner.forEach(async (key, i, array) => {
-			keylist = await redisqueries.allkeys(`bull:${TASK_QUEUE}:${key}-*`)
-			keys = keys.concat(keylist) 
-			if (i === array.length - 1) resolve(keys)
-		});
+		try {
+			owner.forEach(async (key, i, array) => {
+				keylist = await redisqueries.allkeys(`bull:${TASK_QUEUE}:${key}-*`)
+				keys = keys.concat(keylist) 
+				if (i === array.length - 1) resolve(keys)
+			});
+		} catch (err) {
+			reject({ message: err.message, status: false })
+		}
 	});
 	getKeys.then((allkeys) => {
 		console.log("allkeys", allkeys);
