@@ -226,13 +226,17 @@ module.exports = app => {
 		const taskList = [];
 		var taskInst = undefined;
 		var getTaskList = new Promise((resolve, reject) => {
-			allkeys.forEach(async (key, i, array) => {
-				console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
-				taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
-				//console.log(taskInst)
-				taskInst && taskList.push({id: taskInst.id, timestamp: taskInst.timestamp, key: key, data: taskInst.data, task: taskInst});
-				if (i === array.length -1) resolve(taskList);
-			})
+			try {
+				allkeys.forEach(async (key, i, array) => {
+					console.log("Retriving task:", key, key.match(/([^:]+$)/)[0]);
+					taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
+					//console.log(taskInst)
+					taskInst && taskList.push({id: taskInst.id, timestamp: taskInst.timestamp, key: key, data: taskInst.data, task: taskInst});
+					if (i === array.length -1) resolve(taskList);
+				})
+			} catch (err) {
+                reject({ message: err.message, status: false })
+			}
 		})
 
 		getTaskList.then((tl) => {
