@@ -257,8 +257,7 @@ module.exports = app => {
 	})
 	.catch(alert => {
 		console.log("(ops!)alert:", alert);
-		//res.json({ "status": false, "message": alert, "status_code": 401})
-		next(err)
+		res.json({ "status": false, "message": alert, "status_code": 401})
 	})
   })
 
