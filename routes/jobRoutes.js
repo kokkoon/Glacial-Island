@@ -246,6 +246,10 @@ module.exports = app => {
 		getTaskList.then((tl) => {
 			res.status(200).send(tl)
 		})
+
+		getTaskList.catch(err => {
+			res.status(401).send(err)
+		})
 	})
 	.catch(alert => {
 		console.log("(ops!)alert:", alert);
