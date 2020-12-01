@@ -230,7 +230,7 @@ module.exports = app => {
 	});
 	getKeys.then((allkeys) => {
 		console.log("allkeys", allkeys);
-		if (!allKeys) res.status(401).send({})
+		if (allKeys && !allKeys.length) res.status(401).send({})
 		const taskList = [];
 		var taskInst = undefined;
 		var getTaskList = new Promise((resolve, reject) => {
