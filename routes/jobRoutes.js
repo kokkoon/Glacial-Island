@@ -334,10 +334,10 @@ module.exports = app => {
 
 	  switch (command) {
 		case "?":
-			const replyMsg = "?: Command helps \n \
-				task, tasks: Get list of pending tasks \n \
-				app[roved]: Approve a task \n \
-				rej[ected]: Reject a task"
+			const replyMsg = "?: Command helps \
+				\ntask, tasks: Get list of pending tasks \
+				\napp[roved]: Approve a task \
+				\nrej[ected]: Reject a task"
 			console.log(`replyMsg: ${replyMsg}`)
 			twiml.message(replyMsg);
 			res.writeHead(200, {'Content-Type':'text/xml'});
