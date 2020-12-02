@@ -334,9 +334,9 @@ module.exports = app => {
 
 	  switch (command) {
 		case "?":
-			const replyMsg = "?: Command helps \
-				task, tasks: Get list of pending tasks \
-				app[roved]: Approve a task \
+			const replyMsg = "?: Command helps \n \
+				task, tasks: Get list of pending tasks \n \
+				app[roved]: Approve a task \n \
 				rej[ected]: Reject a task"
 			console.log(`replyMsg: ${replyMsg}`)
 			twiml.message(replyMsg);
