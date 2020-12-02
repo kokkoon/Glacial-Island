@@ -352,7 +352,8 @@ module.exports = app => {
 
 					var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 					console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
-					if (outcome == "task") return (waitingJob.length<1)? `There were no pending task for you` : waitingJob;
+					console.log(waitingJob)
+					if (outcome == "task") return (waitingJob.length<1)? `There were no pending task for you` : 'List of pending tasks..';
 					
 					if (outcome === undefined) return `Failed interprete your reply: ${msg}, reply "?" to get help`;
 					if (waitingJob.length<1) return `There were no pending task to ${outcome}`;
