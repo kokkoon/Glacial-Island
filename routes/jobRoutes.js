@@ -346,14 +346,18 @@ module.exports = app => {
 		default:
 			taskQueue.getJobs(['delayed'], 0, 100)
 				.then(async result => {
-					var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
-					console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
-					if (waitingJob.length<1) return `There were no pending task for you`;
-					const outcome = msg.match(/App/i) ? 'approved': msg.match(/Rej/i) ? 'rejected': undefined;
+					const outcome = command.match(/App/i) ? 'approved': command.match(/Rej/i) ? 'rejected':
+						command.match(/task/i) ? 'task': undefined;
 					console.log("User's response:", outcome);
 
+					var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
+					console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
+					if (outcome == "task") return (waitingJob.length<1)? `There were no pending task for you` : waitingJob;
+					
+					if (outcome === undefined) return `Failed interprete your reply: ${msg}, reply "?" to get help`;
+					if (waitingJob.length<1) return `There were no pending task to ${outcome}`;
+
 					var replyMsg = "";
-					if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
 					
 					return taskqueries.resume(waitingJob[0], outcome)
 						.then(async ans => {
