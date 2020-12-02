@@ -332,54 +332,68 @@ module.exports = app => {
 	  var command = msg.match(/^task|tasks$/i) ? 'task' : msg.match(/^\?$/) ? '?' : msg;
 	  console.log('Command:', command);
 
-	  taskQueue.getJobs(['delayed'], 0, 100)
-	  	.then(async result => {
-			var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
-			console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
-			if (waitingJob.length<1) return `There were no pending task for you`;
-			const outcome = msg.match(/App/i) ? 'approved': msg.match(/Rej/i) ? 'rejected': undefined;
-			console.log("User's response:", outcome);
-
-			var replyMsg = "";
-			if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
-			
-			return taskqueries.resume(waitingJob[0], outcome)
-				.then(async ans => {
-					console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
-					if (ans.resumed) {
-						// completion criteria met, update other tasks...
-						taskqueries.closePendingTasks(waitingJob[0], outcome)
-					} 
-					
-					waitingJob[0].data.status = "Completed";
-					waitingJob[0].data.response = outcome;
-					waitingJob[0].data.updated = Date.now();
-					await waitingJob[0].update(waitingJob[0].data);
-					//await waitingJob[0].promote();
-					//await waitingJob[0].moveToCompleted('completed', true, true)
-					//await waitingJob[0].remove();
-					return `${ans.message}`;
-						
-				}).catch(err => {
-					console.log(`Error...${err} ${msg}`)
-					return `Error... ${err}`
-				})
-		})
-		.then(replyMsg =>{
+	  switch (command) {
+		case "?":
+			const replyMsg = "?: Command helps \
+				task, tasks: Get list of pending tasks \
+				app[roved]: Approve a task \
+				rej[ected]: Reject a task"
 			console.log(`replyMsg: ${replyMsg}`)
 			twiml.message(replyMsg);
 			res.writeHead(200, {'Content-Type':'text/xml'});
 			res.end(twiml.toString());
-		})
-		.catch(alert => {
-			console.log("ops!alert:", alert);
-			twiml.message('Failed!');
-			res.writeHead(200, {'Content-Type':'text/xml'});
-			res.end(twiml.toString());
-		})
+			break
+		default:
+			taskQueue.getJobs(['delayed'], 0, 100)
+				.then(async result => {
+					var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
+					console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
+					if (waitingJob.length<1) return `There were no pending task for you`;
+					const outcome = msg.match(/App/i) ? 'approved': msg.match(/Rej/i) ? 'rejected': undefined;
+					console.log("User's response:", outcome);
 
-		console.log("SESSION: ", req.session)
-		//res.set('Content-Type', 'text/xml')
+					var replyMsg = "";
+					if (outcome === undefined) return `Failed interprete your reply: ${msg}`;
+					
+					return taskqueries.resume(waitingJob[0], outcome)
+						.then(async ans => {
+							console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
+							if (ans.resumed) {
+								// completion criteria met, update other tasks...
+								taskqueries.closePendingTasks(waitingJob[0], outcome)
+							} 
+							
+							waitingJob[0].data.status = "Completed";
+							waitingJob[0].data.response = outcome;
+							waitingJob[0].data.updated = Date.now();
+							await waitingJob[0].update(waitingJob[0].data);
+							//await waitingJob[0].promote();
+							//await waitingJob[0].moveToCompleted('completed', true, true)
+							//await waitingJob[0].remove();
+							return `${ans.message}`;
+								
+						}).catch(err => {
+							console.log(`Error...${err} ${msg}`)
+							return `Error... ${err}`
+						})
+				})
+				.then(replyMsg =>{
+					console.log(`replyMsg: ${replyMsg}`)
+					twiml.message(replyMsg);
+					res.writeHead(200, {'Content-Type':'text/xml'});
+					res.end(twiml.toString());
+				})
+				.catch(alert => {
+					console.log("ops!alert:", alert);
+					twiml.message('Failed!');
+					res.writeHead(200, {'Content-Type':'text/xml'});
+					res.end(twiml.toString());
+				})
+			break
+	  }
+
+	console.log("SESSION: ", req.session)
+	//res.set('Content-Type', 'text/xml')
   })
 
 }
