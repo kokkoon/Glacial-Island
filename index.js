@@ -10,6 +10,7 @@ const redisqueries = require('./services/redisqueries');
 
 //const serviceWorker = require('./worker-service');
 //const taskWorker = require('./worker-task');
+const flowWorker = require('./worker-flow');
 const emailWorker = require('./worker-email');
 
 
