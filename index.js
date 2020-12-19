@@ -1,7 +1,7 @@
 //replaced server.js
 
 const express = require("express");
-const session = require("express-session");
+//const session = require("express-session");
 const app = express();
 const Bull = require('bull');
 const GUI = require('bull-arena');
@@ -107,13 +107,13 @@ const dashboard = GUI({
 
 app.use('/dashboard', dashboard);
 
-app.use(session({
-	secret:'anyt-string-but-to-keep-secret',
-	name: 'get-approval',
-    proxy: true,
-    resave: true,
-    saveUninitialized: true
-}));
+//app.use(session({
+//	secret:'anyt-string-but-to-keep-secret',
+//	name: 'get-approval',
+//    proxy: true,
+//    resave: true,
+//    saveUninitialized: true
+//}));
 require('./routes/jobRoutes')(app);
 
 const PORT = process.env.PORT || '4000';
