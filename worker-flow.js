@@ -1,7 +1,8 @@
 //const throng = require('throng');
 const Bull = require('bull');
 const keys = require('./config/keys');
-const QUEUE_NAME = 'FLOW';
+const NODE_ENV = process.env.NODE_ENV;
+const QUEUE_NAME = 'FLOW@' + NODE_ENV;
 const REDIS_URL = process.env.REDIS_URL || keys.redisURL;
 const orchestrator = require('./services/orchestrator');
 const moment = require('moment');
