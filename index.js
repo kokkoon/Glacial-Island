@@ -1,7 +1,7 @@
 //replaced server.js
 
 const express = require("express");
-const session = require("express-session");
+//const session = require("express-session");
 const app = express();
 const Bull = require('bull');
 const GUI = require('bull-arena');
@@ -10,8 +10,8 @@ const redisqueries = require('./services/redisqueries');
 
 //const serviceWorker = require('./worker-service');
 //const taskWorker = require('./worker-task');
-const flowWorker = require('./worker-flow');
-const emailWorker = require('./worker-email');
+//const flowWorker = require('./worker-flow');
+//const emailWorker = require('./worker-email');
 
 
 redisqueries.getAllQueues(resData => {
@@ -84,13 +84,15 @@ const dashboard = GUI({
 
 app.use('/dashboard', dashboard);
 
-app.use(session({
+/*app.use(session({
 	secret:'anyt-string-but-to-keep-secret',
 	name: 'get-approval',
     proxy: true,
     resave: true,
     saveUninitialized: true
 }));
+*/
+
 require('./routes/jobRoutes')(app);
 
 const PORT = process.env.PORT || '4000';
