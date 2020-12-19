@@ -7,12 +7,35 @@ const Bull = require('bull');
 const GUI = require('bull-arena');
 const keys = require('./config/keys');
 const redisqueries = require('./services/redisqueries');
+const QUEUE_NAME = 'FLOW';
+const REDIS_URL = process.env.REDIS_URL || keys.redisURL;
+const orchestrator = require('./services/orchestrator');
+const moment = require('moment');
+const flowQueue = new Bull(QUEUE_NAME, REDIS_URL);
 
 //const serviceWorker = require('./worker-service');
 //const taskWorker = require('./worker-task');
-const flowWorker = require('./worker-flow');
-const emailWorker = require('./worker-email');
+// const flowWorker = require('./worker-flow');
+//const emailWorker = require('./worker-email');
 
+const maxJobsPerWorker = 1;
+flowQueue.process(maxJobsPerWorker, async (job) => {
+	console.log('Workflow worker started.')
+	if (!job.data.state) job.data.state = "Active";
+	if (!job.data.start) job.data.start = moment();
+	job.data.jobStart = moment();
+	if (job.data.state !== "Paused") {
+		job.data.data = {};
+		job.data.definition.variables.forEach(element => {
+			job.data.data[element.name] = element.value
+		});
+	}
+	await job.update(job.data);
+
+	// Start orchestration job
+	orchestrator.startflow(job)
+	return { value: "job done"}
+})
 
 redisqueries.getAllQueues(resData => {
 	resData = resData.length === 0 ? ["FLOW"] : resData
