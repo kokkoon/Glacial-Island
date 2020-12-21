@@ -325,9 +325,9 @@ module.exports = app => {
 
   app.post('/sms/reply', function (req, res) {
 	  const twiml = new MessagingResponse();
-	  const smsCount = req.session.counter || 0;
+	  //const smsCount = req.session.counter || 0;
 	  const msg = req.body.Body;
-	  req.session.counter = smsCount + 1;
+	  //req.session.counter = smsCount + 1;
 	  console.log("BODY: ", req.body)
 	  var command = msg.match(/^task|tasks$/i) ? 'task' : msg.match(/^\?$/) ? '?' : msg;
 	  console.log('Command:', command);
@@ -396,7 +396,7 @@ module.exports = app => {
 			break
 	  }
 
-	console.log("SESSION: ", req.session)
+	//console.log("SESSION: ", req.session)
 	//res.set('Content-Type', 'text/xml')
   })
 
