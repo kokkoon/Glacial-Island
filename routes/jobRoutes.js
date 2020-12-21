@@ -325,9 +325,9 @@ module.exports = app => {
 
   app.post('/sms/reply', function (req, res) {
 	  const twiml = new MessagingResponse();
-	  const smsCount = req.session.counter || 0;
+	  //const smsCount = req.session.counter || 0;
 	  const msg = req.body.Body;
-	  req.session.counter = smsCount + 1;
+	  //req.session.counter = smsCount + 1;
 	  console.log("BODY: ", req.body)
 	  var command = msg.match(/^task|tasks$/i) ? 'task' : msg.match(/^\?$/) ? '?' : msg;
 	  console.log('Command:', command);
@@ -352,7 +352,11 @@ module.exports = app => {
 
 					var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 					console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
-					if (outcome == "task") return (waitingJob.length<1)? `There were no pending task for you` : waitingJob.map(x => `${x.id}, ${x.data.taskName}`).join('\n');
+					if (outcome == "task") {
+						if (waitingJob.length<1) return 'There were no pending task for you'
+						var openJob = waitingJob.filter(obj => {return obj.data.status === 'New'})
+						return (openJob.length<1)? `There were no pending task for you` : openJob.map(x => `${x.id}, ${x.data.taskName}`).join('\n');
+					}
 					
 					if (outcome === undefined) return `Failed interprete your reply: ${msg}, reply "?" to get help`;
 					if (waitingJob.length<1) return `There were no pending task to ${outcome}`;
@@ -396,7 +400,7 @@ module.exports = app => {
 			break
 	  }
 
-	console.log("SESSION: ", req.session)
+	//console.log("SESSION: ", req.session)
 	//res.set('Content-Type', 'text/xml')
   })
 
