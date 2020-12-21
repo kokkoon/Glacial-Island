@@ -162,7 +162,7 @@ module.exports = app => {
 						//console.log(key, i)
 						//if (!key.endsWith(":logs")) {
 							inst = await flowQueue.getJob(key.match(/bull\:FLOW\:(.*)/)[1])
-							instList.push(inst)
+							if (inst) instList.push(inst)
 						//}
 						if (i === array.length -1) resolve();
 					})
