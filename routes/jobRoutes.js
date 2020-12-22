@@ -26,7 +26,7 @@ module.exports = app => {
 
   app.get('/allkeys/:id', async function(req, res) {
 	console.log(req.params.id)
-	redisqueries.allkeys(`bull:FLOW:${req.params.id}*`)
+	redisqueries.allkeys(`bull:${QUEUE_NAME}:${req.params.id}*`)
 		.then(keys => {
 			res.json({"status": true, "message": keys, "status_code": 200})
 		})
@@ -52,7 +52,7 @@ module.exports = app => {
 	const url = URL.parse(req.url, true)
 	const mode = url.query.mode;
 	const jobDefinition = (mode && mode === "test")?sample_flow_definition: req.body; 
-	redisqueries.instanceNumber('bull:FLOW:id')
+	redisqueries.instanceNumber(`bull:${QUEUE_NAME}:id`)
 		.then(uniqueId => {
 			console.log(uniqueId);
 			const JobOpts = {
@@ -152,16 +152,18 @@ module.exports = app => {
   app.get('/instances/:flowId', Auth.Authenticate, function(req, res) {
 	const flowId = req.params.flowId;
 
-	redisqueries.allkeys(`bull:FLOW:${flowId}-*[^s]`)
+	redisqueries.allkeys(`bull:${QUEUE_NAME}:${flowId}-*[^s]`)
 		.then(async keys => {
 				//console.log(keys);
 				const instList = []
 				var inst = {}
 				var getJobList = new Promise((resolve, reject) => {
+					strRegex = new RegExp(`bull\\:${QUEUE_NAME}\\:(.*)`);
 					keys.forEach(async (key, i, array) => {
 						//console.log(key, i)
 						//if (!key.endsWith(":logs")) {
-							inst = await flowQueue.getJob(key.match(/bull\:FLOW\:(.*)/)[1])
+							//inst = await flowQueue.getJob(key.match(/bull\:FLOW\:(.*)/)[1])
+							inst = await flowQueue.getJob(key.match(strRegex)[1])
 							if (inst) instList.push(inst)
 						//}
 						if (i === array.length -1) resolve();
