@@ -1,7 +1,7 @@
 const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV;
 const Bull = require("bull");
-const QUEUE_NAME= 'FLOW';
+const QUEUE_NAME= 'FLOW@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
 const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
