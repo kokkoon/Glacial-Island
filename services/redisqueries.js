@@ -4,13 +4,14 @@ const redis = require('redis');
 const redisScan = require('node-redis-scan');
 const async = require('async');
 const url = require('url');
+let client;
 if(process.env.REDIS_URL){
     let redisURL = url.parse(process.env.REDIS_URL);
     console.log(redisURL)
     let options = {protocol: 'redis:', port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD};
-    let client = redis.createClient(options)
+    client = redis.createClient(options)
 } else {
-    let client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
+    client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
 }
 
 //var client = redis.createClient({protocol: 'redis:', port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD});
