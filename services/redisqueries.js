@@ -2,7 +2,8 @@ const { promisify } = require('util');
 const keys = require('../config/keys');
 const redis = require('redis');
 const redisScan = require('node-redis-scan');
-const async = require('async')
+const async = require('async');
+const url = require('url');
 let redisURL = url.parse(process.env.REDISCLOUD_URL);
 let client;
 if(process.env.REDISCLOUD_URL){
