@@ -3,6 +3,7 @@ const keys = require('../config/keys');
 const redis = require('redis');
 const redisScan = require('node-redis-scan');
 const async = require('async');
+/*
 const url = require('url');
 let client;
 if(process.env.REDIS_URL){
@@ -14,8 +15,9 @@ if(process.env.REDIS_URL){
 } else {
     client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
 }
+*/
 
-//var client = redis.createClient({protocol: 'redis:', port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD});
+var client = redis.createClient({protocol: 'redis:', host: '104.238.212.163', password: '9kcYe9Z2721c'});
 client.on('connect', function(){
   console.log('Redis Connection Successfull');
 });
