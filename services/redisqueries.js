@@ -1,5 +1,6 @@
+const NODE_ENV = process.env.NODE_ENV;
 const { promisify } = require('util');
-const keys = require('../config/keys');
+const keys = require(NODE_ENV == 'production'? '../config/prod': NODE_ENV == 'staging'? '../config/dev': '../config/local') ;
 const redis = require('redis');
 const redisScan = require('node-redis-scan');
 const async = require('async');
@@ -17,7 +18,7 @@ if(process.env.REDIS_URL){
 }
 */
 
-var client = redis.createClient({protocol: 'redis:', host: '104-238-212-163.cloud-xip.io', password: '9kcYe9Z2721c'});
+var client = redis.createClient({protocol: 'redis:', host: keys.redisHost, password: keys.redisPWD});
 client.on('connect', function(){
   console.log('Redis Connection Successfull');
 });
