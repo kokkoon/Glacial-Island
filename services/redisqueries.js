@@ -6,8 +6,8 @@ const async = require('async');
 const url = require('url');
 let client;
 if(process.env.REDIS_URL){
-    let redisURL = url.parse(process.env.REDIS_URL, {no_ready_check: true});
-    client = redis.createClient(redisURL)
+    let redisURL = url.parse(process.env.REDIS_URL);
+    client = redis.createClient(redisURL, {port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
 } else {
     client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
 }
