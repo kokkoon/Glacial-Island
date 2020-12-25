@@ -17,7 +17,7 @@ if(process.env.REDIS_URL){
 }
 */
 
-var client = redis.createClient({protocol: 'redis:', host: '104.238.212.163', password: '9kcYe9Z2721c'});
+var client = redis.createClient({protocol: 'redis:', host: '104-238-212-163.cloud-xip.io', password: '9kcYe9Z2721c'});
 client.on('connect', function(){
   console.log('Redis Connection Successfull');
 });
