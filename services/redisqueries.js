@@ -4,7 +4,7 @@ const redis = require('redis');
 const redisScan = require('node-redis-scan');
 const async = require('async')
 
-var client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD});
+var client = redis.createClient({protocol: 'redis:', port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD});
 client.on('connect', function(){
   console.log('Redis Connection Successfull');
 });
