@@ -7,7 +7,8 @@ const url = require('url');
 let client;
 if(process.env.REDIS_URL){
     let redisURL = url.parse(process.env.REDIS_URL);
-    client = redis.createClient(redisURL, {port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
+    let options = {port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD};
+    client = redis.createClient(redisURL, options)
 } else {
     client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
 }
