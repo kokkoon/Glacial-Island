@@ -12,7 +12,4 @@ switch (process.env.NODE_ENV) {
     break;
 }
 
-//export default keys
-module.exports = {
-  keys: keys
-}
+export default keys
