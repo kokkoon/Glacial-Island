@@ -1,15 +1,14 @@
 console.log("NODE_ENV: " + process.env.NODE_ENV);
-var keys;
 switch (process.env.NODE_ENV) {
   case 'production':
-    keys = require('./prod');
+    module.exports = require('./prod');
     break;
   case 'development':
-    keys = require('./dev');
+    module.exports = require('./dev');
     break;
   case 'local':
-    keys = require('./local');
+    module.exports = require('./local');
     break;
 }
 
-export default keys
+//export default keys
