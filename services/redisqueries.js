@@ -4,10 +4,10 @@ const redis = require('redis');
 const redisScan = require('node-redis-scan');
 const async = require('async');
 const url = require('url');
-let redisURL = url.parse(process.env.REDISCLOUD_URL);
+let redisURL = url.parse(process.env.REDIS_URL);
 let client;
 if(process.env.REDISCLOUD_URL){
-    let redisURL = url.parse(process.env.REDISCLOUD_URL);
+    let redisURL = url.parse(process.env.REDIS_URL);
     client = redis.createClient(redisURL)
 } else {
     client = redis.createClient()
