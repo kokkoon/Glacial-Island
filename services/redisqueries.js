@@ -8,9 +8,9 @@ let redisURL = url.parse(process.env.REDIS_URL);
 let client;
 if(process.env.REDIS_URL){
     let redisURL = url.parse(process.env.REDIS_URL);
-    client = redis.createClient(redisURL)
+    client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
 } else {
-    client = redis.createClient()
+    client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
 }
 
 //var client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD});
