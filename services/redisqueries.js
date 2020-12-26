@@ -1,24 +1,11 @@
 const NODE_ENV = process.env.NODE_ENV;
 const { promisify } = require('util');
-const keys = require(NODE_ENV == 'production'? '../config/prod': NODE_ENV == 'staging'? '../config/dev': '../config/local') ;
+const keys = require('../config/keys');
 const redis = require('redis');
 const redisScan = require('node-redis-scan');
 const async = require('async');
-/*
-const url = require('url');
-let client;
-if(process.env.REDIS_URL){
-    let redisURL = url.parse(process.env.REDIS_URL);
-    console.log(redisURL)
-    //let options = {protocol: 'redis:', host: '104.238.212.163', path: null, password: '9kcYe9Z2721c'};
-    let options = {protocol: 'redis:', host: '104.238.212.163', password: '9kcYe9Z2721c' };
-    client = redis.createClient(options)
-} else {
-    client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD})
-}
-*/
 
-var client = redis.createClient({protocol: 'redis:', host: keys.redisHost, password: keys.redisPWD});
+var client = redis.createClient({host: keys.redisHost, port: keys.redisPort, password: keys.redisPWD});
 client.on('connect', function(){
   console.log('Redis Connection Successfull');
 });
