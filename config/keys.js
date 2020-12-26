@@ -10,5 +10,3 @@ switch (process.env.NODE_ENV) {
     module.exports = require('./local');
     break;
 }
-
-//export default keys
