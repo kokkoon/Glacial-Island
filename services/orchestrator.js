@@ -14,6 +14,7 @@ const twilio = require('twilio');
 //const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
 const math = require('mathjs');
 const redisqueries = require('./redisqueries');
+const { nanoid } = require('nanoid')
 
 const str2Json = str => {
   console.log(str)
@@ -105,6 +106,7 @@ var currentNode = {};
 var exec1 = async (job, actions) => {
   if (actions.length > 0) {
     const first = actions.shift();
+    first.actionId = `${first.number}-${nanoid(6)}` 
     console.log("line 22", first.taskType, first.configuration.actionName)
     
     //if (first.configuration.isDisabled) {
@@ -113,7 +115,7 @@ var exec1 = async (job, actions) => {
     //  job.log(JSON.stringify(logObj))
     //} 
         
-    var logObj = {timestamp: moment(), status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
+    var logObj = {timestamp: moment(), actionId: first.actionId, status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
     console.log(actions.length, JSON.stringify(logObj))
     job.log(JSON.stringify(logObj))
 
@@ -133,7 +135,7 @@ var exec1 = async (job, actions) => {
             await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
           }
           //log exit if_else branch here..
-          var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+          var logObj = {timestamp: moment(), actionId: first.actionId, status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
           level = level -1;
@@ -149,7 +151,7 @@ var exec1 = async (job, actions) => {
           while (jsonLogic.apply(rules, job.data.data)) {
             await exec1(job, [...first.branches[0].actions])
           }
-          var logObj = {timestamp: moment(), status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+          var logObj = {timestamp: moment(), actionId: first.actionId, status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
           break
@@ -211,7 +213,7 @@ var exec1 = async (job, actions) => {
         actions.unshift(first);
         job.update(job.data);
         
-        logObj = {timestamp: moment(), status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${first.configuration.actionTitle}`};
+        logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${first.configuration.actionTitle}`};
         console.log(actions.length, JSON.stringify(logObj));
         job.log(JSON.stringify(logObj));
 
@@ -225,7 +227,7 @@ var exec1 = async (job, actions) => {
           await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
         }
         
-        logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
+        logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
         console.log(actions.length, JSON.stringify(logObj));
         job.log(JSON.stringify(logObj));
       }
@@ -238,7 +240,7 @@ var exec1 = async (job, actions) => {
       //let serviceJob = await serviceQueue.add(first);
       //let result = await serviceJob.finished();
       //console.log(result)
-      logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
+      logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
       console.log(actions.length, JSON.stringify(logObj));
       job.log(JSON.stringify(logObj));
     } else { //do function
@@ -251,7 +253,7 @@ var exec1 = async (job, actions) => {
       
       //finish doing task..
       //loginst = (moment()) + `: Ended ${first.name}, ${first.title}`;
-      logObj = {timestamp: moment(), status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
+      logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
       console.log(actions.length, JSON.stringify(logObj));
       job.log(JSON.stringify(logObj));
 
