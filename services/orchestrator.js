@@ -236,7 +236,7 @@ var exec1 = async (job, actions) => {
         actions.unshift(first);
         job.update(job.data);
         
-        var tasks = taskList.map( ta => ta.JobOpts.jobId).join()
+        var tasks = taskList.map( ta => ta.opts.jobId).join()
         logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${tasks}`};
         console.log(actions.length, JSON.stringify(logObj));
         job.log(JSON.stringify(logObj));
