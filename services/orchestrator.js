@@ -41,7 +41,7 @@ const doFunction = (job, node) => {
     switch (node.datatype.type) { //or node.configuration.actionName
       case "log_message":
         var logMsg = node.configuration.properties.message;
-        var logObj = {timestamp: moment(), status: "Custom", activity: node.configuration.actionName, log: `${parseVariable(logMsg,job.data.data)}`};
+        var logObj = {timestamp: moment(), actionId: node.actionId, status: "Custom", activity: node.configuration.actionName, log: `${parseVariable(logMsg,job.data.data)}`};
         console.log(JSON.stringify(logObj))
         job.log(JSON.stringify(logObj))
         resolve(true)
@@ -135,7 +135,7 @@ var exec1 = async (job, actions) => {
             await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
           }
           //log exit if_else branch here..
-          var logObj = {timestamp: moment(), actionId: first.actionId, status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+          var logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
           level = level -1;
@@ -151,7 +151,7 @@ var exec1 = async (job, actions) => {
           while (jsonLogic.apply(rules, job.data.data)) {
             await exec1(job, [...first.branches[0].actions])
           }
-          var logObj = {timestamp: moment(), actionId: first.actionId, status: "Exit branch", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+          var logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
           break
