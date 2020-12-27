@@ -48,6 +48,7 @@ const doFunction = (job, node) => {
         break
       case "set_variables":
         var vars = node.configuration.properties;
+        var logMsg = "";
         vars.map((v) => {
           var varObj = job.data.definition.variables.find(obj => {return obj.name === v.var});
           var i = job.data.definition.variables.findIndex(obj => {return obj.name === v.var});
@@ -55,30 +56,39 @@ const doFunction = (job, node) => {
             case "number":
               //job.data.definition.variables[i].value = Number(v.val)
               job.data.data[v.var] = Number(v.val)
+              logMsg = (logMsg == ""? "": `${logMsg}; `) + v.var + " = " + v.val;
               break
             case "boolean":
               //job.data.definition.variables[i].value = (/^\s*(true|1|on)\s*$/i).test(v.val)
               job.data.data[v.var] = (/^\s*(true|1|on)\s*$/i).test(v.val)
+              logMsg = (logMsg == ""? "": `${logMsg}; `) + v.var + " = " + v.val;
               break
             case "array":
               //job.data.definition.variables[i].value = JSON.parse(v.val)
               job.data.data[v.var] = JSON.parse(v.val)
+              logMsg = (logMsg == ""? "": `${logMsg}; `) + v.var + " = " + v.val;
               break
             case "object":
               //job.data.definition.variables[i].value = JSON.parse(v.val)
               job.data.data[v.var] = JSON.parse(v.val)
+              logMsg = (logMsg == ""? "": `${logMsg}; `) + v.var + " = " + v.val;
               break
             default: //string as default
               //job.data.definition.variables[i].value = v.val
               job.data.data[v.var] = v.val
+              logMsg = (logMsg == ""? "": `${logMsg}; `) + v.var + " = " + v.val;
               break
           }
           console.log(v.var, job.data.data[v.var])
-        })
+        });
+        var logObj = {timestamp: moment(), actionId: node.actionId, status: "Custom", activity: node.configuration.actionName, log: `${logMsg}`};
+        console.log(JSON.stringify(logObj))
+        job.log(JSON.stringify(logObj))
         resolve(true)
         break
       case "create_variable":
         var variable = node.configuration.properties;
+        var logMsg = "";
         switch (variable.type) {
           case "number":
             console.log("number variable")
@@ -90,6 +100,10 @@ const doFunction = (job, node) => {
             job.data.data[variable.name] = val
             break
         }
+        logMsg = variable.name + " = " + job.data.data[variable.name];
+        var logObj = {timestamp: moment(), actionId: node.actionId, status: "Custom", activity: node.configuration.actionName, log: `${logMsg}`};
+        console.log(JSON.stringify(logObj))
+        job.log(JSON.stringify(logObj))
         resolve(true)
         break
       default:
