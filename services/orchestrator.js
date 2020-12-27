@@ -205,6 +205,7 @@ var exec1 = async (job, actions) => {
                 taskData.response = "";
                 taskData.taskDesc = first.configuration.properties.taskDesc;
                 taskData.instanceId = job.id;
+                taskData.actionId = first.actionId;
                 taskData.state = job.data.state;
                 taskData.linkedTask = i===0 ? taskId : taskList[0].data.linkedTask;
                 const JobOpts = {jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true};
@@ -235,7 +236,8 @@ var exec1 = async (job, actions) => {
         actions.unshift(first);
         job.update(job.data);
         
-        logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${first.configuration.actionTitle}`};
+        var tasks = taskList.map( ta => ta.JobOpts.jobId).join()
+        logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${tasks}`};
         console.log(actions.length, JSON.stringify(logObj));
         job.log(JSON.stringify(logObj));
 
