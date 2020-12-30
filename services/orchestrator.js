@@ -193,6 +193,7 @@ var exec1 = async (job, actions) => {
         var taskList = [];
         
 				var createTaskList = new Promise((resolve, reject) => {
+          var taskList = [];
           assigneeList.forEach((assignee, i, arr) => {
             redisqueries.instanceNumber(`bull:${MSG_QUEUE}:id`)
               .then(taskId => {
