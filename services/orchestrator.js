@@ -223,12 +223,15 @@ var exec1 = async (job, actions) => {
               .catch(alert => {
                 console.log("Oh-o! alert:", alert)
               });
-              if (i === arr.length -1) resolve(taskList);
+              if (i === arr.length -1) {
+                console.log("line 227 taskList:", taskList)
+                resolve(taskList)
+              };
           })
         })
 
         createTaskList.then((taskList) => {
-          console.log("taskList:",taskList)
+          console.log("line 234 taskList:",taskList)
         })
 
 
