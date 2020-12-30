@@ -240,7 +240,7 @@ var exec1 = async (job, actions) => {
           
           var tasks = taskList.map( ta => ta.data.owner).join()
           console.log(tasks)
-          logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${tasks}`};
+          logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Task(s) [${taskList.map( ta => ta.opts.jobId).join()}] assigned to [${tasks}]`};
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
         })
