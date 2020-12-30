@@ -210,7 +210,6 @@ var exec1 = async (job, actions) => {
                 taskData.linkedTask = i===0 ? taskId : taskList[0].data.linkedTask;
                 const JobOpts = {jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true};
                 taskList.push({data: taskData, opts: JobOpts})
-                console.log("line 213:", taskList.length)
                 msgQueue.add(taskData, JobOpts)
                 .then(result => {
                     //console.log(result)
@@ -223,7 +222,6 @@ var exec1 = async (job, actions) => {
               })
               .then(() => {
                 if (i === arr.length -1) {
-                  console.log("line 228 taskList:", taskList)
                   resolve(taskList)
                 };
               })
@@ -234,18 +232,18 @@ var exec1 = async (job, actions) => {
         })
 
         createTaskList.then(taskList => {
-          console.log("line 237 taskList:",taskList)
+          console.log("line 237 taskList:",taskList.length)
+
+          job.data.state = "Paused";
+          actions.unshift(first);
+          job.update(job.data);
+          
+          var tasks = taskList.map( ta => ta.opts.jobId).join()
+          logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${tasks}`};
+          console.log(actions.length, JSON.stringify(logObj));
+          job.log(JSON.stringify(logObj));
         })
 
-
-        job.data.state = "Paused";
-        actions.unshift(first);
-        job.update(job.data);
-        
-        var tasks = taskList.map( ta => ta.opts.jobId).join()
-        logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${tasks}`};
-        console.log(actions.length, JSON.stringify(logObj));
-        job.log(JSON.stringify(logObj));
 
         return "Paused"
       } else {
