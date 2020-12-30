@@ -210,6 +210,7 @@ var exec1 = async (job, actions) => {
                 taskData.linkedTask = i===0 ? taskId : taskList[0].data.linkedTask;
                 const JobOpts = {jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true};
                 taskList.push({data: taskData, opts: JobOpts})
+                console.log("line 213:", taskList)
                 msgQueue.add(taskData, JobOpts)
                 .then(result => {
                     //console.log(result)
@@ -224,14 +225,14 @@ var exec1 = async (job, actions) => {
                 console.log("Oh-o! alert:", alert)
               });
               if (i === arr.length -1) {
-                console.log("line 227 taskList:", taskList)
+                console.log("line 228 taskList:", taskList)
                 resolve(taskList)
               };
           })
         })
 
         createTaskList.then(taskList => {
-          console.log("line 234 taskList:",taskList)
+          console.log("line 235 taskList:",taskList)
         })
 
 
