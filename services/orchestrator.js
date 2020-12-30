@@ -187,7 +187,7 @@ var exec1 = async (job, actions) => {
         //assign task to first.configuration.properties.assignee.assignee
         var validPhone = /^\+?[1-9]\d{9,14}$/;
         var assigneeList = first.configuration.properties.assignee.assignee.split(/[,;]+/);
-        assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, ''))?e.trim().replace(/[ -]/g, ''):e);
+        assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, ''))?e.trim().replace(/[ -]/g, ''):e.trim());
         console.log("line 191", assigneeList);
 
         var taskList = [];
@@ -238,7 +238,8 @@ var exec1 = async (job, actions) => {
           actions.unshift(first);
           job.update(job.data);
           
-          var tasks = taskList.map( ta => ta.opts.jobId).join()
+          var tasks = taskList.map( ta => ta.data.owner).join()
+          console.log(tasks)
           logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Wait for ${tasks}`};
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
