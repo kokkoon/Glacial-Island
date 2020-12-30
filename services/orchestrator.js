@@ -193,7 +193,6 @@ var exec1 = async (job, actions) => {
         var taskList = [];
         
 				var createTaskList = new Promise((resolve, reject) => {
-          var taskList = [];
           assigneeList.forEach((assignee, i, arr) => {
             redisqueries.instanceNumber(`bull:${MSG_QUEUE}:id`)
               .then(taskId => {
@@ -210,7 +209,8 @@ var exec1 = async (job, actions) => {
                 taskData.state = job.data.state;
                 taskData.linkedTask = i===0 ? taskId : taskList[0].data.linkedTask;
                 const JobOpts = {jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true};
-                taskList.push({data: taskData, opts: JobOpts})
+                //taskList.push({data: taskData, opts: JobOpts})
+                taskList.push(assignee)
                 msgQueue.add(taskData, JobOpts)
                 .then(result => {
                     //console.log(result)
