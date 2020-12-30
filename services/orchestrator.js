@@ -188,7 +188,7 @@ var exec1 = async (job, actions) => {
         var validPhone = /^\+?[1-9]\d{9,14}$/;
         var assigneeList = first.configuration.properties.assignee.assignee.split(/[,;]+/);
         assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, ''))?e.trim().replace(/[ -]/g, ''):e);
-        console.log(assigneeList);
+        console.log("line 191", assigneeList);
 
         var taskList = [];
         
@@ -196,7 +196,7 @@ var exec1 = async (job, actions) => {
           assigneeList.forEach((assignee, i, arr) => {
             redisqueries.instanceNumber(`bull:${MSG_QUEUE}:id`)
               .then(taskId => {
-                console.log(assignee)
+                console.log("line 199:", assignee)
                 const taskData = {...first.configuration.properties};
                 taskData.name = first.configuration.properties.taskName; 
                 taskData.owner = assignee.trim();
@@ -209,8 +209,7 @@ var exec1 = async (job, actions) => {
                 taskData.state = job.data.state;
                 taskData.linkedTask = i===0 ? taskId : taskList[0].data.linkedTask;
                 const JobOpts = {jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true};
-                //taskList.push({data: taskData, opts: JobOpts})
-                taskList.push(assignee)
+                taskList.push({data: taskData, opts: JobOpts})
                 msgQueue.add(taskData, JobOpts)
                 .then(result => {
                     //console.log(result)
@@ -231,7 +230,7 @@ var exec1 = async (job, actions) => {
           })
         })
 
-        createTaskList.then((taskList) => {
+        createTaskList.then(taskList => {
           console.log("line 234 taskList:",taskList)
         })
 
