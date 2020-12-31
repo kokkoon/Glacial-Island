@@ -120,7 +120,7 @@ var currentNode = {};
 var exec1 = async (job, actions) => {
   if (actions.length > 0) {
     const first = actions.shift();
-    first.actionId = `${first.number}-${nanoid(6)}` 
+    if (!first.actionId) first.actionId = `${first.number}-${nanoid(6)}`; 
     console.log("line 22", first.taskType, first.configuration.actionName)
     
     //if (first.configuration.isDisabled) {
@@ -208,6 +208,7 @@ var exec1 = async (job, actions) => {
                 taskData.actionId = first.actionId;
                 taskData.state = job.data.state;
                 taskData.linkedTask = i===0 ? taskId : taskList[0].data.linkedTask;
+                taskData.taskId = taskId;
                 const JobOpts = {jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true};
                 taskList.push({data: taskData, opts: JobOpts})
                 msgQueue.add(taskData, JobOpts)
@@ -240,7 +241,8 @@ var exec1 = async (job, actions) => {
           
           var tasks = taskList.map( ta => ta.data.owner).join()
           console.log(tasks)
-          logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, log: `Task(s) [${taskList.map( ta => ta.opts.jobId).join()}] assigned to [${tasks}]`};
+          logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, 
+            log: `Task(s) [${taskList.map( ta => ta.data.taskId).join()}] \nassigned to [${tasks}]`};
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
         })
