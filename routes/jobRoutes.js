@@ -354,18 +354,18 @@ module.exports = app => {
 
 					var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 					console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
+					var openJob = waitingJob.filter(obj => {return obj.data.status === 'New'})
 					if (outcome == "task") {
 						if (waitingJob.length<1) return 'There were no pending task for you'
-						var openJob = waitingJob.filter(obj => {return obj.data.status === 'New'})
 						return (openJob.length<1)? `There were no pending task for you` : openJob.map(x => `${x.id}, ${x.data.taskName}`).join('\n');
 					}
 					
 					if (outcome === undefined) return `Failed interprete your reply: ${msg}, reply "?" to get help`;
-					if (waitingJob.length<1) return `There were no pending task to ${outcome}`;
+					if (openJob.length<1) return `There were no pending task to ${outcome}`;
 
 					var replyMsg = "";
 					
-					return taskqueries.resume(waitingJob[0], outcome)
+					return taskqueries.resume(openJob[0], outcome)
 						.then(async ans => {
 							console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
 							if (ans.resumed) {
