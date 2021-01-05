@@ -100,7 +100,7 @@ const doFunction = (job, node) => {
             job.data.data[variable.name] = val
             break
         }
-        logMsg = variable.name + " = " + job.data.data[variable.name];
+        logMsg = variable.name + " as " + variable.value;
         var logObj = {timestamp: moment(), actionId: node.actionId, status: "Custom", activity: node.configuration.actionName, log: `Set ${logMsg}`};
         console.log(JSON.stringify(logObj))
         job.log(JSON.stringify(logObj))
