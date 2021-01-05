@@ -171,9 +171,7 @@ var exec1 = async (job, actions) => {
           job.log(JSON.stringify(logObj))
           if (Object.keys(rules).length !== 0) 
           while (jsonLogic.apply(rules, job.data.data)) {
-            var actions = [...first.branches[0].actions]
-            await exec1(job, actions)
-            actions = []
+            await exec1(job, JSON.parse(JSON.stringify(first.branches[0].actions)))
           }
           logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
           console.log(actions.length, JSON.stringify(logObj));
