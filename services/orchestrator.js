@@ -81,7 +81,7 @@ const doFunction = (job, node) => {
           }
           console.log(v.var, job.data.data[v.var])
         });
-        var logObj = {timestamp: moment(), actionId: node.actionId, status: "Custom", activity: node.configuration.actionName, log: `${logMsg}`};
+        var logObj = {timestamp: moment(), actionId: node.actionId, status: "Custom", activity: node.configuration.actionName, log: `Set ${logMsg}`};
         console.log(JSON.stringify(logObj))
         job.log(JSON.stringify(logObj))
         resolve(true)
@@ -101,7 +101,7 @@ const doFunction = (job, node) => {
             break
         }
         logMsg = variable.name + " = " + job.data.data[variable.name];
-        var logObj = {timestamp: moment(), actionId: node.actionId, status: "Custom", activity: node.configuration.actionName, log: `${logMsg}`};
+        var logObj = {timestamp: moment(), actionId: node.actionId, status: "Custom", activity: node.configuration.actionName, log: `Set ${logMsg}`};
         console.log(JSON.stringify(logObj))
         job.log(JSON.stringify(logObj))
         resolve(true)
@@ -165,7 +165,7 @@ var exec1 = async (job, actions) => {
           var operand1 = first.configuration.properties.operand1;
           var operand2 = first.configuration.properties.operand2;
           var rules = JSON.parse(`{"${operator}": [{"var":"${operand1}"}, ${operand2}]}`);
-          var logMsg = `${operand1} ${operator} ${operand2}`;
+          var logMsg = `While ${operand1} ${operator} ${operand2}`;
           var logObj = {timestamp: moment(), actionId: first.actionId, status: "Custom", activity: first.configuration.actionTitle, log: `${logMsg}`};
           console.log(JSON.stringify(logObj))
           job.log(JSON.stringify(logObj))
