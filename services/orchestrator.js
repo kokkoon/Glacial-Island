@@ -170,10 +170,10 @@ var exec1 = async (job, actions) => {
           console.log(JSON.stringify(logObj))
           job.log(JSON.stringify(logObj))
           if (Object.keys(rules).length !== 0) 
-          var i = 0
-          while (jsonLogic.apply(rules, job.data.data) && job.data.state !== "Paused" && i < 100) {
+          var i = 0, j = "New";
+          while (jsonLogic.apply(rules, job.data.data) && j !== "Paused" && i < 2) {
             var j = await exec1(job, JSON.parse(JSON.stringify(first.branches[0].actions)))
-            console.log(j)
+            console.log("J", j)
             i++
           }
           if (job.data.state !== "Paused") {
