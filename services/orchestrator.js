@@ -146,19 +146,32 @@ var exec1 = async (job, actions) => {
           var logObj = {timestamp: moment(), actionId: first.actionId, status: "Custom", activity: first.configuration.actionTitle, log: `${logMsg}`};
           console.log(JSON.stringify(logObj))
           job.log(JSON.stringify(logObj))
-          if (Object.keys(rules).length !== 0) 
-          if (jsonLogic.apply(rules, job.data.data)) {
-            await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
+          var j = job.data.state;
+          if (first.hasOwnProperty('current_branch')) {
+            var branchActions = first.current_branch.actions;
           } else {
-            await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+            if (Object.keys(rules).length !== 0) 
+            if (jsonLogic.apply(rules, job.data.data)) {
+              var branchActions = JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0];
+            } else {
+              var branchActions = JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0];
+            }
+          };
+          j = await exec1(job, branchActions)
+          console.log("j of IF_ELSE", j)
+          if (j == "Paused") {
+            job.data.state = j;
+            first.current_branch = {}
+            first.current_branch.actions = branchActions;
+            actions.unshift(first);
+            job.update(job.data);
+            return j;
           }
           //log exit if_else branch here..
           logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
           level = level -1;
-          break
-        case "RUN_IF":
           break
         case "WHILE":
           var operator = first.configuration.properties.operator;
@@ -192,6 +205,8 @@ var exec1 = async (job, actions) => {
             job.log(JSON.stringify(logObj));
           }
           console.log("J", j)
+          break
+        case "RUN_IF":
           break
         default:
           break
