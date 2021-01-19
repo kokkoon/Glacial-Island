@@ -2,7 +2,7 @@ const { promisify } = require('util');
 const bodyParser = require("body-parser");
 const URL = require('url');
 const keys = require('../config/keys');
-const NODE_ENV = process.env.NODE_ENV;
+const NODE_ENV = process.env.NODE_ENV || "development";
 const Bull = require("bull");
 const QUEUE_NAME= 'FLOW@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
@@ -131,6 +131,7 @@ module.exports = app => {
 	}
 	const jobData = {...job.data};
 	jobData.definition.actions[0].configuration.properties.outcome = req.params.outcome;
+	jobData.outcome = req.params.outcome;
 	flowQueue.getJobLogs(jobId)
 		.then(logs => {
 			const jobLogs = {...logs}
@@ -173,7 +174,7 @@ module.exports = app => {
 				getJobList.then(() => {
 					console.log(`Log instances for ${flowId}:`, instList.length);
 					if (instList.length > 0) {
-						res.json({"status": true, "data":instList, "status_code": 200})
+						res.status(200).json({"status": true, "data":instList})
 					} else {
 						res.json({"status": false, "data": [], "status_code": 401})
 					}

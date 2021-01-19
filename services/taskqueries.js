@@ -1,5 +1,5 @@
 const keys = require('../config/keys');
-const NODE_ENV = process.env.NODE_ENV;
+const NODE_ENV = process.env.NODE_ENV || "development";
 const Bull = require("bull");
 const QUEUE_NAME= 'FLOW@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
@@ -98,6 +98,7 @@ const resume = (task, outcome) => {
 								} else {
 									// Criteria fulfilled, resume workflow...
 									jobData.definition.actions[0].configuration.properties.outcome = outcomeByCriteria;
+									jobData.outcome = outcomeByCriteria;
 									flowQueue.getJobLogs(jobId)
 										.then(logs => {
 											const jobLogs = {...logs}
@@ -121,6 +122,7 @@ const resume = (task, outcome) => {
 						} else {
 							// The only assignee, resume workflow...
 							jobData.definition.actions[0].configuration.properties.outcome = outcome;
+							jobData.outcome = outcome;
 							flowQueue.getJobLogs(jobId)
 								.then(logs => {
 									const jobLogs = {...logs}
@@ -147,6 +149,7 @@ const resume = (task, outcome) => {
 			} else {
 				// Approval concluded, resume workflow...
 				jobData.definition.actions[0].configuration.properties.outcome = outcome;
+				jobData.outcome = outcome;
 				flowQueue.getJobLogs(jobId)
 					.then(logs => {
 						const jobLogs = {...logs}

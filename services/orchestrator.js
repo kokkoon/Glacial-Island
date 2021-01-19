@@ -3,7 +3,7 @@ const JSONPath = require('jsonpath');
 const jsonLogic = require('json-logic-js');
 const Bull = require('bull');
 const keys = require('../config/keys');
-const NODE_ENV = process.env.NODE_ENV;
+const NODE_ENV = process.env.NODE_ENV || "development";
 const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
 //const QUEUE_NAME = "SERVICE";
 const REDIS_URL = keys.redisURL;
@@ -14,7 +14,7 @@ const twilio = require('twilio');
 //const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
 const math = require('mathjs');
 const redisqueries = require('./redisqueries');
-const { nanoid } = require('nanoid')
+const { nanoid } = require('nanoid');
 
 const str2Json = str => {
   console.log(str)
@@ -120,8 +120,8 @@ var currentNode = {};
 var exec1 = async (job, actions) => {
   if (actions.length > 0) {
     const first = actions.shift();
-    if (!first.actionId) first.actionId = `${first.number}-${nanoid(6)}`; 
-    console.log("line 22", first.taskType, first.configuration.actionName)
+    if (!first.hasOwnProperty('actionId')) first.actionId = `${first.number}-${nanoid(6)}`; 
+    //console.log(first.taskType, first.configuration.actionName)
     
     //if (first.configuration.isDisabled) {
     //  var logObj = {timestamp: moment(), status: "Skipped", activity: first.configuration.actionTitle, log: `Skipped ${first.configuration.actionTitle}`};
@@ -146,19 +146,32 @@ var exec1 = async (job, actions) => {
           var logObj = {timestamp: moment(), actionId: first.actionId, status: "Custom", activity: first.configuration.actionTitle, log: `${logMsg}`};
           console.log(JSON.stringify(logObj))
           job.log(JSON.stringify(logObj))
-          if (Object.keys(rules).length !== 0) 
-          if (jsonLogic.apply(rules, job.data.data)) {
-            await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
+          var j = job.data.state;
+          if (first.hasOwnProperty('current_branch')) {
+            var branchActions = first.current_branch.actions;
           } else {
-            await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+            if (Object.keys(rules).length !== 0) 
+            if (jsonLogic.apply(rules, job.data.data)) {
+              var branchActions = JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0];
+            } else {
+              var branchActions = JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0];
+            }
+          };
+          j = await exec1(job, branchActions)
+          console.log("j of IF_ELSE", j)
+          if (j == "Paused") {
+            job.data.state = j;
+            first.current_branch = {}
+            first.current_branch.actions = branchActions;
+            actions.unshift(first);
+            job.update(job.data);
+            return j;
           }
           //log exit if_else branch here..
           logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
           level = level -1;
-          break
-        case "RUN_IF":
           break
         case "WHILE":
           var operator = first.configuration.properties.operator;
@@ -169,13 +182,31 @@ var exec1 = async (job, actions) => {
           var logObj = {timestamp: moment(), actionId: first.actionId, status: "Custom", activity: first.configuration.actionTitle, log: `${logMsg}`};
           console.log(JSON.stringify(logObj))
           job.log(JSON.stringify(logObj))
+          var branchActions = first.branches[0].hasOwnProperty('current_actions')? first.branches[0].current_actions : JSON.parse(JSON.stringify(first.branches[0].actions));
+          var j = job.data.state;
           if (Object.keys(rules).length !== 0) 
           while (jsonLogic.apply(rules, job.data.data)) {
-            await exec1(job, JSON.parse(JSON.stringify(first.branches[0].actions)))
+            j = await exec1(job, branchActions)
+            console.log("J:", j)
+            if (j == "Paused") {
+              job.data.state = j
+              first.branches[0].current_actions = branchActions;
+              actions.unshift(first);
+              //job.data.definition.actions = actions;
+              job.update(job.data);
+              return j;
+            }
+            branchActions = JSON.parse(JSON.stringify(first.branches[0].actions));
           }
-          logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
-          console.log(actions.length, JSON.stringify(logObj));
-          job.log(JSON.stringify(logObj));
+          console.log("job.data.state", job.data.state, " j--->", j);
+          if (j !== "Paused") {
+            logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exit branch ${first.configuration.actionTitle}`};
+            console.log(actions.length, JSON.stringify(logObj));
+            job.log(JSON.stringify(logObj));
+          }
+          console.log("J", j)
+          break
+        case "RUN_IF":
           break
         default:
           break
@@ -188,7 +219,7 @@ var exec1 = async (job, actions) => {
         var validPhone = /^\+?[1-9]\d{9,14}$/;
         var assigneeList = first.configuration.properties.assignee.assignee.split(/[,;]+/);
         assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, ''))?e.trim().replace(/[ -]/g, ''):e.trim());
-        console.log("line 191", assigneeList);
+        console.log(assigneeList);
 
         var taskList = [];
         
@@ -196,7 +227,7 @@ var exec1 = async (job, actions) => {
           assigneeList.forEach((assignee, i, arr) => {
             redisqueries.instanceNumber(`bull:${MSG_QUEUE}:id`)
               .then(taskId => {
-                console.log("line 199:", assignee)
+                console.log(assignee)
                 const taskData = {...first.configuration.properties};
                 taskData.name = first.configuration.properties.taskName; 
                 taskData.owner = assignee.trim();
@@ -233,7 +264,7 @@ var exec1 = async (job, actions) => {
         })
 
         createTaskList.then(taskList => {
-          console.log("line 237 taskList:",taskList.length)
+          console.log("taskList:",taskList.length)
 
           job.data.state = "Paused";
           actions.unshift(first);
@@ -250,17 +281,19 @@ var exec1 = async (job, actions) => {
 
         return "Paused"
       } else {
-        var outcome = first.configuration.properties.outcome;
+        var outcome = job.data.outcome; //first.configuration.properties.outcome;
         console.log(outcome);
         if (outcome=='approved') {
-          await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
+          job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
         } else {
-          await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+          job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
         }
         
         logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
         console.log(actions.length, JSON.stringify(logObj));
         job.log(JSON.stringify(logObj));
+        //job.data.state = "Active";
+        job.update(job.data);
       }
     } else if (first.taskType == "service") {
       console.log("Execute service");
@@ -300,9 +333,10 @@ var startflow = async (job) => {
   var state = await exec1(job, job.data.definition.actions);
 
   //Exited execution of workflow actions
+  console.log(state)
   job.data.state = state;
   job.data.jobEnd = moment();
-  if (state === "Completed") job.data.end = moment();
+  job.data['end'] = (state === "Completed") ? moment() : undefined;
   job.update(job.data);
 }
 
