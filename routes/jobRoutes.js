@@ -129,6 +129,7 @@ module.exports = app => {
 		res.send("Only a paused job could be resumed");
 		return;
 	}
+	if (job.data.hasOwnProperty('current_branch') && job.data.current_branch.length > 0) job.data.definition.actions = [].concat(job.data.current_branch, job.data.definition.actions);
 	const jobData = {...job.data};
 	jobData.definition.actions[0].configuration.properties.outcome = req.params.outcome;
 	jobData.outcome = req.params.outcome;

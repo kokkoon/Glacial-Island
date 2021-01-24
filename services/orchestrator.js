@@ -213,8 +213,12 @@ var exec1 = async (job, actions) => {
       }
     } else if (first.taskType =="get-response") {
 
-      //assign a task and pause..
-      if (job.data.state !== "Paused" ) {
+     /* if (first.hasOwnProperty('current_branch') && first.current_branch.length > 0) {
+        var j = job.data.state;
+        var branchActions = first.current_branch.actions;
+        j = await exec1(job, branchActions)
+      } else */
+      if (job.data.state !== "Paused") {  //assign a task and pause..
         //assign task to first.configuration.properties.assignee.assignee
         var validPhone = /^\+?[1-9]\d{9,14}$/;
         var assigneeList = first.configuration.properties.assignee.assignee.split(/[,;]+/);
@@ -267,6 +271,7 @@ var exec1 = async (job, actions) => {
           console.log("taskList:",taskList.length)
 
           job.data.state = "Paused";
+          job.data.waitForResponse = true;
           actions.unshift(first);
           job.update(job.data);
           
@@ -283,18 +288,40 @@ var exec1 = async (job, actions) => {
       } else {
         var outcome = job.data.outcome; //first.configuration.properties.outcome;
         console.log(outcome);
-        if (outcome=='approved') {
-          job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
+        var j = job.data.state;
+        job.data.state = "Active";
+        job.update(job.data)
+        if (first.hasOwnProperty('current_branch')) {
+          var branchActions = first.current_branch.actions;
         } else {
-          job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+          if (outcome=='approved') {
+            var branchActions = JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0];
+            //job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
+          } else {
+            var branchActions = JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0];
+            //job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+          }
         }
-        
-        logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
-        console.log(actions.length, JSON.stringify(logObj));
-        job.log(JSON.stringify(logObj));
-        //job.data.state = "Active";
+        job.data.current_branch = branchActions;
         job.update(job.data);
+        j = await exec1(job, branchActions)
+
       }
+      /*if (branchActions.length > 0) {
+        //job.data.state = j;
+        first.current_branch = {}
+        first.current_branch.actions = branchActions;
+        actions.unshift(first);
+        job.update(job.data);
+        return j;
+      }*/
+
+      logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
+      console.log(actions.length, JSON.stringify(logObj));
+      job.log(JSON.stringify(logObj));
+      //job.data.state = "Active";
+      job.update(job.data);
+
     } else if (first.taskType == "service") {
       console.log("Execute service");
       //serviceQueue.add(first)
