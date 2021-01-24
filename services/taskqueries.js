@@ -41,6 +41,8 @@ const resume = (task, outcome) => {
 	return new Promise(async function(resolve, reject) {
 		const jobId = task.data.instanceId
 		const job = await flowQueue.getJob(jobId); //get workflow instance by instance id
+		if (job.data.hasOwnProperty('current_branch') && job.data.current_branch.length > 0) job.data.definition.actions = [].concat(job.data.current_branch, job.data.definition.actions);
+		console.log(job.data.definition.actions)
 		const jobData = {...job.data};
 		console.log(jobId, job.data.state)
 		if (job.data.state !== "Paused") {
