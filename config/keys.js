@@ -1,13 +1,16 @@
-const NODE_ENV = process.env.NODE_ENV || "development"
-console.log("keys.NODE_ENV: " + NODE_ENV);
+console.log("NODE_ENV: " + process.env.NODE_ENV);
+var keys;
 switch (process.env.NODE_ENV) {
   case 'production':
-    module.exports = require('./prod');
+    keys = require('./prod');
     break;
   case 'development':
-    module.exports = require('./dev');
+    keys = require('./dev');
     break;
   case 'local':
-    module.exports = require('./local');
+    keys = require('./local');
     break;
 }
+
+//export default keys
+module.exports = keys
