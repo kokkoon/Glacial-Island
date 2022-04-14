@@ -1,5 +1,5 @@
 const keys = require('../config/keys');
-const NODE_ENV = process.env.NODE_ENV;
+const NODE_ENV = process.env.NODE_ENV || "development";
 const Bull = require("bull");
 const QUEUE_NAME= 'FLOW@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
@@ -41,6 +41,8 @@ const resume = (task, outcome) => {
 	return new Promise(async function(resolve, reject) {
 		const jobId = task.data.instanceId
 		const job = await flowQueue.getJob(jobId); //get workflow instance by instance id
+		if (job.data.hasOwnProperty('current_branch') && job.data.current_branch.length > 0) job.data.definition.actions = [].concat(job.data.current_branch, job.data.definition.actions);
+		console.log(job.data.definition.actions)
 		const jobData = {...job.data};
 		console.log(jobId, job.data.state)
 		if (job.data.state !== "Paused") {
@@ -98,6 +100,7 @@ const resume = (task, outcome) => {
 								} else {
 									// Criteria fulfilled, resume workflow...
 									jobData.definition.actions[0].configuration.properties.outcome = outcomeByCriteria;
+									jobData.outcome = outcomeByCriteria;
 									flowQueue.getJobLogs(jobId)
 										.then(logs => {
 											const jobLogs = {...logs}
@@ -121,6 +124,7 @@ const resume = (task, outcome) => {
 						} else {
 							// The only assignee, resume workflow...
 							jobData.definition.actions[0].configuration.properties.outcome = outcome;
+							jobData.outcome = outcome;
 							flowQueue.getJobLogs(jobId)
 								.then(logs => {
 									const jobLogs = {...logs}
@@ -147,6 +151,7 @@ const resume = (task, outcome) => {
 			} else {
 				// Approval concluded, resume workflow...
 				jobData.definition.actions[0].configuration.properties.outcome = outcome;
+				jobData.outcome = outcome;
 				flowQueue.getJobLogs(jobId)
 					.then(logs => {
 						const jobLogs = {...logs}

@@ -1,12 +1,13 @@
+const NODE_ENV = process.env.NODE_ENV || "development";
 const { promisify } = require('util');
 const keys = require('../config/keys');
 const redis = require('redis');
 const redisScan = require('node-redis-scan');
-const async = require('async')
+const async = require('async');
 
-var client = redis.createClient({port:keys.redisPort, host: keys.redisHost, password:keys.redisPWD});
+var client = redis.createClient({host: keys.redisHost, port: keys.redisPort, password: keys.redisPWD});
 client.on('connect', function(){
-  console.log('Redis Connection Successfull');
+  console.log('Redis Connection Successfull', NODE_ENV);
 });
 var scanner = new redisScan(client)
 

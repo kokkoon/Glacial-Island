@@ -2,7 +2,7 @@ const { promisify } = require('util');
 const bodyParser = require("body-parser");
 const URL = require('url');
 const keys = require('../config/keys');
-const NODE_ENV = process.env.NODE_ENV;
+const NODE_ENV = process.env.NODE_ENV || "development";
 const Bull = require("bull");
 const QUEUE_NAME= 'FLOW@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
@@ -129,8 +129,10 @@ module.exports = app => {
 		res.send("Only a paused job could be resumed");
 		return;
 	}
+	if (job.data.hasOwnProperty('current_branch') && job.data.current_branch.length > 0) job.data.definition.actions = [].concat(job.data.current_branch, job.data.definition.actions);
 	const jobData = {...job.data};
 	jobData.definition.actions[0].configuration.properties.outcome = req.params.outcome;
+	jobData.outcome = req.params.outcome;
 	flowQueue.getJobLogs(jobId)
 		.then(logs => {
 			const jobLogs = {...logs}
@@ -173,7 +175,7 @@ module.exports = app => {
 				getJobList.then(() => {
 					console.log(`Log instances for ${flowId}:`, instList.length);
 					if (instList.length > 0) {
-						res.json({"status": true, "data":instList, "status_code": 200})
+						res.status(200).json({"status": true, "data":instList})
 					} else {
 						res.json({"status": false, "data": [], "status_code": 401})
 					}
@@ -354,18 +356,18 @@ module.exports = app => {
 
 					var waitingJob = result.filter(obj => {return obj.data.to === req.body.From})
 					console.log(`Total: ${result.length}, # of waiting jobs for ${req.body.From}`, waitingJob.length)
+					var openJob = waitingJob.filter(obj => {return obj.data.status === 'New'})
 					if (outcome == "task") {
 						if (waitingJob.length<1) return 'There were no pending task for you'
-						var openJob = waitingJob.filter(obj => {return obj.data.status === 'New'})
 						return (openJob.length<1)? `There were no pending task for you` : openJob.map(x => `${x.id}, ${x.data.taskName}`).join('\n');
 					}
 					
 					if (outcome === undefined) return `Failed interprete your reply: ${msg}, reply "?" to get help`;
-					if (waitingJob.length<1) return `There were no pending task to ${outcome}`;
+					if (openJob.length<1) return `There were no pending task to ${outcome}`;
 
 					var replyMsg = "";
 					
-					return taskqueries.resume(waitingJob[0], outcome)
+					return taskqueries.resume(openJob[0], outcome)
 						.then(async ans => {
 							console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
 							if (ans.resumed) {

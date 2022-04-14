@@ -7,6 +7,15 @@ const GUI = require('bull-arena');
 const keys = require('./config/keys');
 const redisqueries = require('./services/redisqueries');
 
+const { log } = console;
+function proxiedLog(...args) {
+  const l1 = ((new Error('log')).stack.split('\n')[2] || '…')
+  const line = (l1.match(/[^\/||^\\]*(?=\))/) || ['not found'])[0];
+  log.call(console, `../${line}-->`, ...args);
+}
+console.info = proxiedLog;
+console.log = proxiedLog;
+
 //const serviceWorker = require('./worker-service');
 //const taskWorker = require('./worker-task');
 const flowWorker = require('./worker-flow');
@@ -88,11 +97,3 @@ const PORT = process.env.PORT || '4000';
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
 })
-
-
-
-
-
-
-
-  

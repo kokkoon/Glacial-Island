@@ -1,7 +1,7 @@
 const keys = require('./config/keys');
 const nodemailer = require('nodemailer');
 const smtpTransport = require("nodemailer-smtp-transport");
-const NODE_ENV = process.env.NODE_ENV;
+const NODE_ENV = process.env.NODE_ENV || "development";
 const Bull = require("bull");
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
