@@ -22,7 +22,7 @@ const flowWorker = require('./worker-flow');
 //const emailWorker = require('./worker-email');
 
 redisqueries.getAllQueues(resData => {
-	resData = resData.length === 0 ? ["FLOW"] : resData
+	resData = resData.length === 0 ? ["FLOW", "TEST"] : resData
 	const qDashboard = GUI({
 		Bull,
 		queues: resData.map(v => ({name: v, hostId: "flow", url: keys.redisURL}))
