@@ -1,6 +1,6 @@
 console.log("NODE_ENV: " + process.env.NODE_ENV);
 var keys;
-switch (process.env.NODE_ENV) {
+switch (process.env.NODE_ENV || "development") {
   case 'production':
     keys = require('./prod');
     break;
