@@ -18,6 +18,9 @@ const async = require('async');
 const redisqueries = require('../services/redisqueries');
 const taskqueries = require('../services/taskqueries');
 const { doesNotMatch } = require('assert');
+const accountSid = keys.twilioAccountSid;
+const authToken = keys.twilioAuthToken;
+const client = require('twilio')(accountSid, authToken);
 
 
 module.exports = app => {
@@ -346,6 +349,19 @@ module.exports = app => {
 			twiml.message(replyMsg);
 			res.writeHead(200, {'Content-Type':'text/xml'});
 			res.end(twiml.toString());
+			break
+		case "location":
+			client.messages.create({
+			   from: 'whatsapp:+16262473170',
+			   body: "Here is our office location",
+			   persistentAction: ['geo: 1.281422489647776,103.84804055799597'],
+			   to: req.body.From
+			 })
+			.then(message => {
+			  console.log(message.sid);
+			  res.send(true)
+			 })
+			.catch(error => console.error('error: ', error.message));
 			break
 		default:
 			taskQueue.getJobs(['delayed'], 0, 100)
