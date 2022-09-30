@@ -38,3 +38,4 @@ const maxJobsPerWorker = 1;
 //}
 
 //throng({ workers, start })
+console.log("Flow worker started for ", QUEUE_NAME)
