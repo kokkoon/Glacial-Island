@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start1": "nf start",
-    "start": "node index.js"
+    "start": "node index.js",
+    "nodemon": "nodemon index.js"
   },
   "author": "",
   "license": "ISC",
@@ -14,6 +15,7 @@
     "async": "^3.2.0",
     "bull": "^3.18.0",
     "bull-arena": "^3.2.2",
+    "ejs": "^3.1.8",
     "express": "^4.17.1",
     "express-session": "^1.17.1",
     "foreman": "^3.0.1",
@@ -26,7 +28,9 @@
     "nodemailer": "^6.4.16",
     "nodemailer-smtp-transport": "^2.7.4",
     "redis": "^3.0.2",
+    "replaceall": "^0.1.6",
     "request": "^2.88.2",
+    "request-promise": "^4.2.6",
     "throng": "^5.0.0",
     "twilio": "^3.50.0"
   }

@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'local'
 console.log("NODE_ENV: " + process.env.NODE_ENV);
 var keys;
 switch (process.env.NODE_ENV || "development") {

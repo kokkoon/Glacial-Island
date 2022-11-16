@@ -15,7 +15,7 @@ const twilio = require('twilio');
 const math = require('mathjs');
 const redisqueries = require('./redisqueries');
 const { nanoid } = require('nanoid');
-
+const workflowController = require("../controller/workflow_v2.controller")
 const str2Json = str => {
   console.log(str)
   try {
@@ -37,11 +37,17 @@ const parseVariable = (str, data) => {
 
 const doFunction = (job, node) => {
   //new Promise(res => setTimeout(res, 2000))
-	return new Promise(async (resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     switch (node.datatype.type) { //or node.configuration.actionName
       case "log_message":
         var logMsg = node.configuration.properties.message;
-        var logObj = {timestamp: moment(), actionId: node.actionId, status: "Custom", activity: node.configuration.actionName, log: `${parseVariable(logMsg,job.data.data)}`};
+        var logObj = {
+          timestamp: moment(),
+          actionId: node.actionId,
+          status: "Custom",
+          activity: node.configuration.actionName,
+          log: `${parseVariable(logMsg, job.data.data)}`
+        };
         console.log(JSON.stringify(logObj))
         job.log(JSON.stringify(logObj))
         resolve(true)
@@ -118,18 +124,14 @@ var currentNode = {};
 
 //exec first node and continue recurse
 var exec1 = async (job, actions) => {
+  console.log("=======actions=========")
   if (actions.length > 0) {
+
     const first = actions.shift();
-    if (!first.hasOwnProperty('actionId')) first.actionId = `${first.number}-${nanoid(6)}`; 
-    //console.log(first.taskType, first.configuration.actionName)
-    
-    //if (first.configuration.isDisabled) {
-    //  var logObj = {timestamp: moment(), status: "Skipped", activity: first.configuration.actionTitle, log: `Skipped ${first.configuration.actionTitle}`};
-    //  console.log(actions.length, JSON.stringify(logObj))
-    //  job.log(JSON.stringify(logObj))
-    //} 
-        
-    var logObj = {timestamp: moment(), actionId: first.actionId, status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}`};
+
+    if (!first.hasOwnProperty('actionId')) first.actionId = `${first.number}-${nanoid(6)}`;
+
+    var logObj = { timestamp: moment(), actionId: first.actionId, status: "Start", activity: first.configuration.actionTitle, log: `Starts ${first.configuration.actionTitle}` };
     console.log(actions.length, JSON.stringify(logObj))
     job.log(JSON.stringify(logObj))
 
@@ -274,11 +276,13 @@ var exec1 = async (job, actions) => {
           job.data.waitForResponse = true;
           actions.unshift(first);
           job.update(job.data);
-          
-          var tasks = taskList.map( ta => ta.data.owner).join()
+
+          var tasks = taskList.map(ta => ta.data.owner).join()
           console.log(tasks)
-          logObj = {timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle, 
-            log: `Task(s) [${taskList.map( ta => ta.data.taskId).join()}] \nassigned to [${tasks}]`};
+          logObj = {
+            timestamp: moment(), actionId: first.actionId, status: "Waiting", activity: first.configuration.actionTitle,
+            log: `Task(s) [${taskList.map(ta => ta.data.taskId).join()}] \nassigned to [${tasks}]`
+          };
           console.log(actions.length, JSON.stringify(logObj));
           job.log(JSON.stringify(logObj));
         })
@@ -307,14 +311,7 @@ var exec1 = async (job, actions) => {
         j = await exec1(job, branchActions)
 
       }
-      /*if (branchActions.length > 0) {
-        //job.data.state = j;
-        first.current_branch = {}
-        first.current_branch.actions = branchActions;
-        actions.unshift(first);
-        job.update(job.data);
-        return j;
-      }*/
+
 
       logObj = {timestamp: moment(), actionId: first.actionId, status: "End", activity: first.configuration.actionTitle, log: `Exiting ${first.configuration.actionTitle}`};
       console.log(actions.length, JSON.stringify(logObj));
@@ -357,10 +354,17 @@ var exec1 = async (job, actions) => {
 
 var startflow = async (job) => {
   // Start executing workflow actions...
-  var state = await exec1(job, job.data.definition.actions);
+  console.log("Start executing workflow actions...");
+  var state = null;
+  if (job.data.workflow_definition) {
+    state = await workflowController.startExcution(job, job.data.workflow_definition.variables, job.data.workflow_definition.actions[0], true);
+  } else {
+    state = await exec1(job, job.data.definition.actions);
+  }
 
+
+  console.log("==============Job Completed..=================", state);
   //Exited execution of workflow actions
-  console.log(state)
   job.data.state = state;
   job.data.jobEnd = moment();
   job.data['end'] = (state === "Completed") ? moment() : undefined;
