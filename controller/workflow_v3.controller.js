@@ -43,6 +43,14 @@ const startExcution = async (job, variables, actions, intialExcution) => {
             let actionLists = JSON.parse(JSON.stringify(actions))
             while (actionLists.length > 0) {
                 const action = actionLists.shift();
+
+                var logObj = { timestamp: moment(), actionId: action.actionId, status: "Start", activity: action.configuration.actionTitle, log: `Starts ${action.configuration.actionTitle}` };
+                console.log(actions.length, JSON.stringify(logObj))
+                job.log(JSON.stringify(logObj))
+                var j = job.data.state;
+                console.log("=================");
+                console.log(j);
+                
                 var resData = await callAction(job, varVault, action, actionLists);
                 varVault = resData.varVault;
                 actionLists = resData.actionLists
@@ -132,20 +140,6 @@ const callAction = (job, varVault, action, actionLists) => {
     })
 }
 
-const ConditionFunction = async (job, varVault, action, mainAction) => {
-    try {
-        const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
-        if (actionConfig) {
-            try {
-            } catch {
-
-            }
-        }
-    } catch (err) {
-
-    }
-}
-
 const callCondition = (job, varVault, action, mainAction) => {
     return new Promise(async (resolve, reject) => {
         try {
@@ -177,7 +171,7 @@ const callCondition = (job, varVault, action, mainAction) => {
                 if (variableValue) {
                     branchActions = JSONPath.query(action, '$..branches[?(@.condition==true)].actions')[0];
                 } else {
-                     branchActions = JSONPath.query(action, '$..branches[?(@.condition==false)].actions')[0];
+                    branchActions = JSONPath.query(action, '$..branches[?(@.condition==false)].actions')[0];
                 }
 
                 const resdata = await startExcution(job, varVault, branchActions);
@@ -403,9 +397,9 @@ const queryJson = (varVault, action) => {
     }
 }
 
-const joblogs = (job, startTime, { message, id, text, nodeType }) => {
+const joblogs = (job, startTime, { message, id, text, configuration }) => {
     try {
-        var logMsg = nodeType;
+        var logMsg = configuration.nodeType;
         var logObj = {
             timestamp: moment(),
             actionId: id,
