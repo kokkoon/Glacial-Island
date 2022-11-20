@@ -15,7 +15,7 @@ const twilio = require('twilio');
 const math = require('mathjs');
 const redisqueries = require('./redisqueries');
 const { nanoid } = require('nanoid');
-const workflowController = require("../controller/workflow_v2.controller")
+const workflowController = require("../controller/workflow_v3.controller")
 const str2Json = str => {
   console.log(str)
   try {
@@ -146,9 +146,11 @@ var exec1 = async (job, actions) => {
           var rules = JSON.parse(`{"${operator}": [{"var":"${operand1}"}, ${operand2}]}`);
           var logMsg = `${operand1} ${operator} ${operand2}`;
           var logObj = {timestamp: moment(), actionId: first.actionId, status: "Custom", activity: first.configuration.actionTitle, log: `${logMsg}`};
+        
           console.log(JSON.stringify(logObj))
           job.log(JSON.stringify(logObj))
           var j = job.data.state;
+         
           if (first.hasOwnProperty('current_branch')) {
             var branchActions = first.current_branch.actions;
           } else {
@@ -159,8 +161,11 @@ var exec1 = async (job, actions) => {
               var branchActions = JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0];
             }
           };
+       
           j = await exec1(job, branchActions)
+       
           console.log("j of IF_ELSE", j)
+       
           if (j == "Paused") {
             job.data.state = j;
             first.current_branch = {}
@@ -356,8 +361,9 @@ var startflow = async (job) => {
   // Start executing workflow actions...
   console.log("Start executing workflow actions...");
   var state = null;
+  debugger
   if (job.data.workflow_definition) {
-    state = await workflowController.startExcution(job, job.data.workflow_definition.variables, job.data.workflow_definition.actions[0], true);
+    state = await workflowController.startExcution(job, job.data.workflow_definition.variables, job.data.workflow_definition.actions[0].actions, true);
   } else {
     state = await exec1(job, job.data.definition.actions);
   }
