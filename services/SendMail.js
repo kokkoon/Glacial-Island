@@ -29,7 +29,10 @@ var transporter = function (host) {
         var smtp = {
             smtp_server: "email-smtp.ap-southeast-1.amazonaws.com",
             smtp_port: 587,
-            smtp_auth: {user: "AKIA6QCOO42T3OFY2OXZ", pass: "BGHlOJ7bIjIASUCza/2OxIfPheI+UeyW+nA4m1LVIVAi"},
+            smtp_auth: {
+                user: "AKIA6QCOO42T3OFY2OXZ",
+                pass: "BGHlOJ7bIjIASUCza/2OxIfPheI+UeyW+nA4m1LVIVAi"
+            },
             smtp_fromMail: "workflow@glozic.com"
         }
         resolve(smtp)

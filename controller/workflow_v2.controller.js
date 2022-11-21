@@ -232,7 +232,6 @@ const isCheckJSONParse = (string) => {
 
 const sendEmail = async (job, varVault, action) => {
     try {
-        console.log(varVault);
         const startTime = moment();
         const mailOptions = {
             from: "'Glozic' <workflow@glozic.com>", // sender address
@@ -240,7 +239,6 @@ const sendEmail = async (job, varVault, action) => {
             emailSubject: (action.subject ? "Re: " + ejsRender(action.subject, varVault) : "Glozic workflow"), // Subject line
             emailBody: "parsed reply", // plain text body
         };
-        console.log(mailOptions);
         mailOptions.emailBody = ejsRender(action.messageBody, varVault);
         await SendMail.sendEmail(mailOptions);
         joblogs(job, startTime, action)

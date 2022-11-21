@@ -4,9 +4,9 @@ const Bull = require("bull");
 const QUEUE_NAME= 'FLOW@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
-const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
-const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
-const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL);
+const flowQueue = new Bull(QUEUE_NAME, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const taskQueue = new Bull(TASK_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const emailQueue = new Bull(EMAIL_QUEUE,keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const Auth = require("./authentication");
 const redisqueries = require('./redisqueries');
 

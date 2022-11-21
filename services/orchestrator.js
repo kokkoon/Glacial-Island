@@ -6,9 +6,9 @@ const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV || "development";
 const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
 //const QUEUE_NAME = "SERVICE";
-const REDIS_URL = keys.redisURL;
+//const REDIS_URL = keys.redisURL;
 //const serviceQueue = new Bull(QUEUE_NAME, REDIS_URL);
-const msgQueue = new Bull(MSG_QUEUE, REDIS_URL);
+const msgQueue = new Bull(MSG_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const moment = require('moment');
 const twilio = require('twilio');
 //const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);
@@ -229,7 +229,7 @@ var exec1 = async (job, actions) => {
         //assign task to first.configuration.properties.assignee.assignee
         var validPhone = /^\+?[1-9]\d{9,14}$/;
         var assigneeList = first.configuration.properties.assignee.assignee.split(/[,;]+/);
-        assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, ''))?e.trim().replace(/[ -]/g, ''):e.trim());
+        assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, '')) ? e.trim().replace(/[ -]/g, '') : e.trim());
         console.log(assigneeList);
 
         var taskList = [];
@@ -361,7 +361,6 @@ var startflow = async (job) => {
   // Start executing workflow actions...
   console.log("Start executing workflow actions...");
   var state = null;
-  debugger
   if (job.data.workflow_definition) {
     state = await workflowController.startExcution(job, job.data.workflow_definition.variables, job.data.workflow_definition.actions[0].actions, true);
   } else {

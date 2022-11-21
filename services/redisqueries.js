@@ -5,7 +5,9 @@ const redis = require('redis');
 const redisScan = require('node-redis-scan');
 const async = require('async');
 
-var client = redis.createClient({host: keys.redisHost, port: keys.redisPort, password: keys.redisPWD});
+//var client = redis.createClient(NODE_ENV=="production"?{url: keys.redisURL}:{host: keys.redisHost, port: keys.redisPort, password: keys.redisPWD});
+var client = redis.createClient({host: keys.redisHost, port: keys.redisPort, password: keys.redisPWD, username: keys.redisUser});
+//var client = redis.createClient({url: keys.redisURL});
 client.on('connect', function(){
   console.log('Redis Connection Successfull', NODE_ENV);
 });
@@ -19,7 +21,7 @@ var getAllQueues = async function(callback) {
 
     callback(keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).filter((v,i) => keys.map(key => key.match(/(?<=bull:).+?(?=:)/g)[0]).indexOf(v) === i ))
   } catch (err) {
-    console.log(err.message)
+    console.log("error: ",err)
   }
 }
 

@@ -16,6 +16,7 @@ const keys = require('../config/keys');
 //ENV NODE_ENV
 const NODE_ENV = process.env.NODE_ENV || "development";
 const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
+const msgQueue = new Bull(MSG_QUEUE, keys.redisURL);
 
 //ENV redisqueries
 const redisqueries = require('../services/redisqueries');
@@ -40,47 +41,20 @@ const startExcution = async (job, variables, actions, intialExcution) => {
                 });
             }
 
-            let actionLists = JSON.parse(JSON.stringify(actions))
+            let actionLists = JSON.parse(JSON.stringify(actions));
             while (actionLists.length > 0) {
-                const action = actionLists.shift();
+                var action = actionLists.shift();
 
+                if (!action.hasOwnProperty('actionId')) action.actionId = `${action.number}-${nanoid(6)}`;
                 var logObj = { timestamp: moment(), actionId: action.actionId, status: "Start", activity: action.configuration.actionTitle, log: `Starts ${action.configuration.actionTitle}` };
                 console.log(actions.length, JSON.stringify(logObj))
                 job.log(JSON.stringify(logObj))
                 var j = job.data.state;
-                console.log("=================");
-                console.log(j);
-                
                 var resData = await callAction(job, varVault, action, actionLists);
                 varVault = resData.varVault;
                 actionLists = resData.actionLists
+                job = resData.job;
             }
-
-            // let count = 0;
-            // let from = intialExcution ? "node-start" : actions.startNode;
-            // while (count < edges.length) {
-            //     if (edges.find(x => x.from == from)) {
-            //         let findNodeId = edges.find(x => x.from == from).to;
-            //         var action = JSON.parse(JSON.stringify(nodes.find(x => x.id == findNodeId)));
-            //         if (action) {
-            //             var resData = await callAction(job, varVault, action, actions);
-            //             varVault = resData.varVault;
-            //         }
-
-            //         if (action && action.nodeType == "Condition") {
-            //             const conditonNodeType = varVault[action.variable] ? "conditionTrue" : "conditionFalse"
-            //             let getEdge = edges.filter(x => x.from == findNodeId).find(y => nodesLists.some(z => (z.id == y.to && z.nodeType == conditonNodeType)))
-            //             if (getEdge) {
-            //                 findNodeId = edges.find(x => x.from == getEdge.to).from;
-            //                 from = findNodeId;
-            //             }
-            //         } else {
-            //             from = findNodeId;
-            //         }
-            //     }
-            //     count++;
-            // }
-
 
             resolve("Completed")
         } catch (err) {
@@ -93,6 +67,10 @@ const startExcution = async (job, variables, actions, intialExcution) => {
 
 //Action Lists 
 const callAction = (job, varVault, action, actionLists) => {
+    console.log("===========================================");
+    console.log(job.data.state);
+    // job.data.data[variable.name]
+    console.log("===========================================");
     return new Promise(async (resolve, reject) => {
         try {
             switch (action.configuration.nodeType) {
@@ -100,10 +78,12 @@ const callAction = (job, varVault, action, actionLists) => {
                     varVault = await queryJson(varVault, action);
                     break
                 case "Send Email":
-                    await sendEmail(job, varVault, action);
+                    const reqEmailData = await sendEmail(job, varVault, action);
+                    job = reqEmailData.job;
                     break
                 case "Send SMS":
-                    await sendSMS(job, varVault, action);
+                    const reqSMSData = await sendSMS(job, varVault, action);
+                    job = reqSMSData.job;
                     break
                 case "Log Message":
                     const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
@@ -120,22 +100,119 @@ const callAction = (job, varVault, action, actionLists) => {
                     }
                     break
                 case "Loop":
-                    await loopFunction(job, varVault, action, actionLists);
+                    const reqLoopData = await loopFunction(job, varVault, action, actionLists);
+                    job = reqLoopData.job;
                     break
                 case "Condition":
+                    const reqConditionData = await callCondition(job, varVault, action, actionLists);
+                    job = reqConditionData.job;
+                    break
+                case "Assign Task":
+                    //For Testing
+                    const reqAssignTaskData = await callAssignTask(job, varVault, action, actionLists);
+                    job = reqAssignTaskData.job;
+                    actionLists = reqAssignTaskData.actions;
+
+                    break
+                case "BRANCH":
+                    //For Testing
                     await callCondition(job, varVault, action, actionLists);
                     break
                 case "Call Web Service":
-                    varVault = await callWebService(action, varVault);
+                    const reqWebServiceData = await callWebService(action, varVault);
+                    job = reqWebServiceData.job;
+                    varVault = reqWebServiceData.varVault;
                     break
                 default:
                     console.log("run other actions")
                     break
             }
-            resolve({ varVault, action, actionLists })
+            resolve({ varVault, action, actionLists, job, status: 'jobStatus' })
         } catch (err) {
             console.log(err.message);
             reject(false)
+        }
+    })
+}
+
+const callAssignTask = (job, varVault, action, actions) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            debugger
+            const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
+            if (actionConfig) {
+                if (job.data.state !== "Paused") {
+                    var validPhone = /^\+?[1-9]\d{9,14}$/;
+                    var assigneeList = actionConfig.assign.split(/[,;]+/);
+                    assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, '')) ? e.trim().replace(/[ -]/g, '') : e.trim());
+                    var taskList = [];
+
+                    let count = 0;
+                    while (assigneeList.length > count) {
+                        let assignee = assigneeList[count];
+                        const taskId = await redisqueries.instanceNumber(`bull:${MSG_QUEUE}:id`);
+                        const taskData = { ...actionConfig };
+                        taskData.name = actionConfig.taskname;
+                        taskData.owner = assignee.trim();
+                        taskData.tenant = job.data.tenant;
+                        taskData.status = "New";
+                        taskData.response = "";
+                        taskData.taskDesc = actionConfig.taskdescription;
+                        taskData.instanceId = job.id;
+                        taskData.actionId = action.actionId;
+                        taskData.state = job.data.state;
+                        taskData.linkedTask = count === 0 ? taskId : taskList[0].data.linkedTask;
+                        taskData.taskId = taskId;
+                        const JobOpts = { jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true };
+                        taskList.push({ data: taskData, opts: JobOpts })
+                        msgQueue.add(taskData, JobOpts);
+                        count++;
+                    }
+                    console.log("taskList:", taskList.length)
+                    job.data.state = "Paused";
+                    job.data.waitForResponse = true;
+
+                    actions.unshift(first);
+                    job.update(job.data);
+                    var tasks = taskList.map(ta => ta.data.owner).join()
+
+                    let logObj = {
+                        timestamp: moment(), actionId: action.actionId, status: "Waiting", activity: action.configuration.actionTitle,
+                        log: `Task(s) [${taskList.map(ta => ta.data.taskId).join()}] \nassigned to [${tasks}]`
+                    };
+
+                    job.log(JSON.stringify(logObj));
+
+                } else {
+                    // var outcome = job.data.outcome;
+                    // var j = job.data.state;
+                    // job.data.state = "Active";
+                    // job.update(job.data)
+
+                    // if (first.hasOwnProperty('current_branch')) {
+                    //     var branchActions = first.current_branch.actions;
+                    // } else {
+                    //     if (outcome == 'approved') {
+                    //         var branchActions = JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0];
+                    //         //job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
+                    //     } else {
+                    //         var branchActions = JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0];
+                    //         //job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
+                    //     }
+                    // }
+                    // job.data.current_branch = branchActions;
+                    // job.update(job.data);
+                    // j = await exec1(job, branchActions)
+                }
+
+                logObj = { timestamp: moment(), actionId: action.actionId, status: "End", activity: action.configuration.actionTitle, log: `Exiting ${action.configuration.actionTitle}` };
+                job.log(JSON.stringify(logObj));
+                //job.data.state = "Active";
+                job.update(job.data);
+            }
+            resolve({ job, actions })
+        } catch (err) {
+            resolve({ job })
         }
     })
 }
@@ -174,14 +251,21 @@ const callCondition = (job, varVault, action, mainAction) => {
                     branchActions = JSONPath.query(action, '$..branches[?(@.condition==false)].actions')[0];
                 }
 
+                var logMsg = `${actionConfig.operator} ${whenValue} ${actionConfig.value} ${'Condition : ' + variableValue}`;
+
+                var logObj = { timestamp: moment(), actionId: action.actionId, status: "Custom", activity: action.configuration.actionTitle, log: `${logMsg}` };
+                job.log(JSON.stringify(logObj))
+                var j = job.data.state;
+
+                console.log(j);
                 const resdata = await startExcution(job, varVault, branchActions);
 
-                resolve(varVault)
+                { job }
             } else {
-                resolve(varVault)
+                { job }
             }
         } catch (err) {
-            resolve(varVault)
+            { job }
         }
     });
 }
@@ -216,12 +300,12 @@ const loopFunction = async (job, varVault, action, mainAction) => {
                 const resdata = await startExcution(job, varVault, loopActions);
                 count++
             }
-            return true;
+            { job }
         } catch (err) {
-            return true;
+            { job }
         }
     } else {
-        return true;
+        { job }
     }
 }
 
@@ -320,13 +404,12 @@ const sendEmail = async (job, varVault, action) => {
             mailOptions.emailBody = ejsRender(actionConfig.messageBody, varVault);
             await SendMail.sendEmail(mailOptions);
             joblogs(job, startTime, actionConfig)
-            return true;
         }
-
+        return { job }
     } catch (err) {
         console.log(err.message);
         console.log("Email service failed...")
-        return false;
+        return { job }
     }
 }
 
@@ -354,15 +437,15 @@ const sendSMS = async (job, varVault, action) => {
 
                 }
             });
-            return ({ "status_code": 200, "message": tempActionDef.messageBody });
+            return { job }
         } else {
-            return false;
+            return { job }
         }
     }
     catch (err) {
         console.log(err.message);
-        console.log("Email service failed...")
-        return false;
+        console.log("SMS service failed...")
+        return { job }
     }
 
 }
