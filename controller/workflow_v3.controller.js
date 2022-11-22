@@ -33,7 +33,7 @@ const startExcution = async (job, variables, actions, intialExcution) => {
     return new Promise(async (resolve, reject) => {
         try {
             let varVault = intialExcution ? {} : variables, edges = actions.edges, nodes = actions.nodes;
-
+            let actionStatus = 'Completed'
             if (intialExcution) {
                 let variablesData = await getvariables(variables);
                 Object.keys(variablesData).forEach(ele => {
@@ -42,6 +42,7 @@ const startExcution = async (job, variables, actions, intialExcution) => {
             }
 
             let actionLists = JSON.parse(JSON.stringify(actions));
+
             while (actionLists.length > 0) {
                 var action = actionLists.shift();
 
@@ -50,13 +51,14 @@ const startExcution = async (job, variables, actions, intialExcution) => {
                 console.log(actions.length, JSON.stringify(logObj))
                 job.log(JSON.stringify(logObj))
                 var j = job.data.state;
-                var resData = await callAction(job, varVault, action, actionLists);
+                var resData = await callAction(job, varVault, action, actionLists, actionStatus);
                 varVault = resData.varVault;
                 actionLists = resData.actionLists
                 job = resData.job;
+                actionStatus = resData.actionStatus
             }
 
-            resolve("Completed")
+            resolve(actionStatus == 'Active' ? 'Completed' : actionStatus)
         } catch (err) {
             console.log(err.message);
             resolve("Failed")
@@ -66,7 +68,7 @@ const startExcution = async (job, variables, actions, intialExcution) => {
 }
 
 //Action Lists 
-const callAction = (job, varVault, action, actionLists) => {
+const callAction = (job, varVault, action, actionLists, actionStatus) => {
     console.log("===========================================");
     console.log(job.data.state);
     // job.data.data[variable.name]
@@ -80,15 +82,17 @@ const callAction = (job, varVault, action, actionLists) => {
                 case "Send Email":
                     const reqEmailData = await sendEmail(job, varVault, action);
                     job = reqEmailData.job;
+                    actionStatus = job.data.state;
                     break
                 case "Send SMS":
                     const reqSMSData = await sendSMS(job, varVault, action);
                     job = reqSMSData.job;
+                    actionStatus = job.data.state;
                     break
                 case "Log Message":
-                    const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
-                    if (actionConfig) {
-                        var logMsg = ejsRender(actionConfig.value, varVault)
+                    const properties = (action && action.configuration) ? action.configuration.properties : "";
+                    if (properties) {
+                        var logMsg = ejsRender(properties.value, varVault)
                         var logObj = {
                             timestamp: moment(),
                             actionId: action.id,
@@ -97,21 +101,25 @@ const callAction = (job, varVault, action, actionLists) => {
                             log: logMsg
                         };
                         job.log(JSON.stringify(logObj))
+                        actionStatus = job.data.state;
                     }
                     break
                 case "Loop":
                     const reqLoopData = await loopFunction(job, varVault, action, actionLists);
                     job = reqLoopData.job;
+                    actionStatus = job.data.state;
                     break
                 case "Condition":
                     const reqConditionData = await callCondition(job, varVault, action, actionLists);
                     job = reqConditionData.job;
+                    actionStatus = job.data.state;
                     break
                 case "Assign Task":
                     //For Testing
                     const reqAssignTaskData = await callAssignTask(job, varVault, action, actionLists);
                     job = reqAssignTaskData.job;
                     actionLists = reqAssignTaskData.actions;
+                    actionStatus = job.data.state;
 
                     break
                 case "BRANCH":
@@ -122,12 +130,13 @@ const callAction = (job, varVault, action, actionLists) => {
                     const reqWebServiceData = await callWebService(action, varVault);
                     job = reqWebServiceData.job;
                     varVault = reqWebServiceData.varVault;
+                    actionStatus = job.data.state;
                     break
                 default:
                     console.log("run other actions")
                     break
             }
-            resolve({ varVault, action, actionLists, job, status: 'jobStatus' })
+            resolve({ varVault, action, actionLists, job, actionStatus: actionStatus })
         } catch (err) {
             console.log(err.message);
             reject(false)
@@ -139,11 +148,12 @@ const callAssignTask = (job, varVault, action, actions) => {
     return new Promise(async (resolve, reject) => {
         try {
             debugger
-            const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
-            if (actionConfig) {
+            let properties = (action && action.configuration) ? action.configuration.properties : "";
+            if (properties) {
+                properties['nodeType'] = action.nodeType;
                 if (job.data.state !== "Paused") {
                     var validPhone = /^\+?[1-9]\d{9,14}$/;
-                    var assigneeList = actionConfig.assign.split(/[,;]+/);
+                    var assigneeList = properties.assign.split(/[,;]+/);
                     assigneeList = assigneeList.map(e => validPhone.test(e.trim().replace(/[ -]/g, '')) ? e.trim().replace(/[ -]/g, '') : e.trim());
                     var taskList = [];
 
@@ -151,13 +161,13 @@ const callAssignTask = (job, varVault, action, actions) => {
                     while (assigneeList.length > count) {
                         let assignee = assigneeList[count];
                         const taskId = await redisqueries.instanceNumber(`bull:${MSG_QUEUE}:id`);
-                        const taskData = { ...actionConfig };
-                        taskData.name = actionConfig.taskname;
+                        const taskData = { ...properties };
+                        taskData.name = properties.taskName;
                         taskData.owner = assignee.trim();
                         taskData.tenant = job.data.tenant;
                         taskData.status = "New";
                         taskData.response = "";
-                        taskData.taskDesc = actionConfig.taskdescription;
+                        taskData.taskDesc = properties.taskDesc;
                         taskData.instanceId = job.id;
                         taskData.actionId = action.actionId;
                         taskData.state = job.data.state;
@@ -172,7 +182,7 @@ const callAssignTask = (job, varVault, action, actions) => {
                     job.data.state = "Paused";
                     job.data.waitForResponse = true;
 
-                    actions.unshift(first);
+                    actions.unshift(action);
                     job.update(job.data);
                     var tasks = taskList.map(ta => ta.data.owner).join()
 
@@ -184,25 +194,23 @@ const callAssignTask = (job, varVault, action, actions) => {
                     job.log(JSON.stringify(logObj));
 
                 } else {
-                    // var outcome = job.data.outcome;
-                    // var j = job.data.state;
-                    // job.data.state = "Active";
-                    // job.update(job.data)
+                    var outcome = job.data.outcome;
+                    var j = job.data.state;
+                    job.data.state = "Active";
+                    job.update(job.data)
 
-                    // if (first.hasOwnProperty('current_branch')) {
-                    //     var branchActions = first.current_branch.actions;
-                    // } else {
-                    //     if (outcome == 'approved') {
-                    //         var branchActions = JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0];
-                    //         //job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==true)].actions')[0])
-                    //     } else {
-                    //         var branchActions = JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0];
-                    //         //job.data.state = await exec1(job, JSONPath.query(first, '$..branches[?(@.condition==false)].actions')[0])
-                    //     }
-                    // }
-                    // job.data.current_branch = branchActions;
-                    // job.update(job.data);
-                    // j = await exec1(job, branchActions)
+                    if (action.hasOwnProperty('current_branch')) {
+                        var branchActions = action.current_branch.actions;
+                    } else {
+                        if (outcome == 'approved') {
+                            var branchActions = JSONPath.query(action, '$..branches[?(@.condition==true)].actions')[0];
+                        } else {
+                            var branchActions = JSONPath.query(action, '$..branches[?(@.condition==false)].actions')[0];
+                        }
+                    }
+                    job.data.current_branch = branchActions;
+                    job.update(job.data);
+                    const resdata = await startExcution(job, varVault, branchActions);
                 }
 
                 logObj = { timestamp: moment(), actionId: action.actionId, status: "End", activity: action.configuration.actionTitle, log: `Exiting ${action.configuration.actionTitle}` };
@@ -220,22 +228,23 @@ const callAssignTask = (job, varVault, action, actions) => {
 const callCondition = (job, varVault, action, mainAction) => {
     return new Promise(async (resolve, reject) => {
         try {
-            const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
-            if (actionConfig) {
+            let properties = (action && action.configuration) ? action.configuration.properties : "";
+            if (properties) {
+                properties['nodeType'] = action.nodeType
                 let whenValue = "";
                 let variableValue = false;
-                if (actionConfig.type == "variable") {
-                    whenValue = await replaceVariables(actionConfig.whencondition, varVault, true);
+                if (properties.type == "variable") {
+                    whenValue = await replaceVariables(properties.whencondition, varVault, true);
                 } else {
-                    whenValue = actionConfig.whencondition;
+                    whenValue = properties.whencondition;
                 }
 
-                switch (actionConfig.operator) {
+                switch (properties.operator) {
                     case 'equals':
-                        variableValue = whenValue == actionConfig.value;
+                        variableValue = whenValue == properties.value;
                         break;
                     case 'not_equals':
-                        variableValue = whenValue != actionConfig.value;
+                        variableValue = whenValue != properties.value;
                         break;
                     case 'is_empty':
                         variableValue = (whenValue == null || whenValue == "");
@@ -244,14 +253,14 @@ const callCondition = (job, varVault, action, mainAction) => {
                         variableValue = (whenValue != null || whenValue != "");
                         break;
                 }
-                varVault[actionConfig.variable] = variableValue;
+                varVault[properties.variable] = variableValue;
                 if (variableValue) {
                     branchActions = JSONPath.query(action, '$..branches[?(@.condition==true)].actions')[0];
                 } else {
                     branchActions = JSONPath.query(action, '$..branches[?(@.condition==false)].actions')[0];
                 }
 
-                var logMsg = `${actionConfig.operator} ${whenValue} ${actionConfig.value} ${'Condition : ' + variableValue}`;
+                var logMsg = `${properties.operator} ${whenValue} ${properties.value} ${'Condition : ' + variableValue}`;
 
                 var logObj = { timestamp: moment(), actionId: action.actionId, status: "Custom", activity: action.configuration.actionTitle, log: `${logMsg}` };
                 job.log(JSON.stringify(logObj))
@@ -272,28 +281,28 @@ const callCondition = (job, varVault, action, mainAction) => {
 
 
 const loopFunction = async (job, varVault, action, mainAction) => {
-    const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
-    if (actionConfig) {
+    const properties = (action && action.configuration) ? action.configuration.properties : "";
+    if (properties) {
         try {
             let loopLength = 0, count = 0;
-            if (actionConfig.type == "variable") {
-                loopLength = Number(ejsRender(actionConfig.value, varVault))
-            } else if (actionConfig.type == "json") {
-                loopLength = JSON.parse(actionConfig.value) ? JSON.parse(actionConfig.value).length : 0;
+            if (properties.type == "variable") {
+                loopLength = Number(ejsRender(properties.value, varVault))
+            } else if (properties.type == "json") {
+                loopLength = JSON.parse(properties.value) ? JSON.parse(properties.value).length : 0;
             }
 
             while (count < loopLength) {
                 varVault["loop_index_id"] = JSON.stringify(count)
 
-                if (actionConfig.type == "variable") {
-                    varVault[actionConfig.variable] = replaceVariables(actionConfig.selected_variable, varVault, true);
-                } else if (actionConfig.type == "json") {
-                    varVault[actionConfig.variable] = actionConfig.value
+                if (properties.type == "variable") {
+                    varVault[properties.variable] = replaceVariables(properties.selected_variable, varVault, true);
+                } else if (properties.type == "json") {
+                    varVault[properties.variable] = properties.value
                 }
 
-                if (isCheckJSONParse(varVault[actionConfig.variable])) {
-                    varVault[actionConfig.variable] = JSON.parse(varVault[actionConfig.variable]);
-                    varVault[actionConfig.variable] = (varVault[actionConfig.variable] && varVault[actionConfig.variable].length) ? JSON.stringify(varVault[actionConfig.variable][count]) : {}
+                if (isCheckJSONParse(varVault[properties.variable])) {
+                    varVault[properties.variable] = JSON.parse(varVault[properties.variable]);
+                    varVault[properties.variable] = (varVault[properties.variable] && varVault[properties.variable].length) ? JSON.stringify(varVault[properties.variable][count]) : {}
                 }
 
                 let loopActions = JSON.parse(JSON.stringify(action.branches[0].actions));
@@ -390,20 +399,21 @@ const isCheckJSONParse = (string) => {
 
 const sendEmail = async (job, varVault, action) => {
     try {
-        const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
-        if (actionConfig) {
+        let properties = (action && action.configuration) ? action.configuration.properties : "";
+        if (properties) {
+            properties['nodeType'] = action.nodeType
             console.log(varVault);
             const startTime = moment();
             const mailOptions = {
                 from: "'Glozic' <workflow@glozic.com>", // sender address
-                emailTo: ejsRender(actionConfig.sendTo, varVault), // list of receivers
-                emailSubject: (actionConfig.subject ? "Re: " + ejsRender(actionConfig.subject, varVault) : "Glozic workflow"), // Subject line
+                emailTo: ejsRender(properties.sendTo, varVault), // list of receivers
+                emailSubject: (properties.subject ? "Re: " + ejsRender(properties.subject, varVault) : "Glozic workflow"), // Subject line
                 emailBody: "parsed reply", // plain text body
             };
             console.log(mailOptions);
-            mailOptions.emailBody = ejsRender(actionConfig.messageBody, varVault);
+            mailOptions.emailBody = ejsRender(properties.messageBody, varVault);
             await SendMail.sendEmail(mailOptions);
-            joblogs(job, startTime, actionConfig)
+            joblogs(job, startTime, properties)
         }
         return { job }
     } catch (err) {
@@ -417,14 +427,15 @@ const sendEmail = async (job, varVault, action) => {
 const sendSMS = async (job, varVault, action) => {
     try {
 
-        const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
-        if (actionConfig) {
+        let properties = (action && action.configuration) ? action.configuration.properties : "";
+        if (properties) {
+            properties['nodeType'] = action.nodeType
             const client = new twilio(accountSid, authToken);
-            const tempActionDef = { ...actionConfig };
-            var str = actionConfig.sendTo
+            const tempActionDef = { ...properties };
+            var str = properties.sendTo
             tempActionDef.sendTo = ejsRender(`${tempActionDef.sendTo}`, varVault);
 
-            str = actionConfig.messageBody
+            str = properties.messageBody
             tempActionDef.messageBody = ejsRender(`${tempActionDef.messageBody}`, varVault);
 
             var recipientList = tempActionDef.sendTo.split(/[,;]/)
@@ -452,8 +463,9 @@ const sendSMS = async (job, varVault, action) => {
 
 
 const queryJson = (varVault, action) => {
-    const actionConfig = (action && action.configuration) ? action.configuration.actionConfig : "";
-    if (actionConfig) {
+    let properties = (action && action.configuration) ? action.configuration.properties : "";
+    if (properties) {
+        properties['nodeType'] = action.nodeType
         var jpQuery = (obj, pathExp, count) => {
             if (typeof obj !== 'object' || obj === null) return null
             return count ? JSONPath.query(obj, pathExp, count) : jp.query(obj, pathExp);
@@ -461,12 +473,12 @@ const queryJson = (varVault, action) => {
         return new Promise(async (resolve, reject) => {
             try {
                 if (Object.keys(varVault).length != 0) {
-                    const JSONData = actionConfig.formatType == "2" ? varVault[actionConfig.jsonData] : actionConfig.jsonData;
+                    const JSONData = properties.formatType == "2" ? varVault[properties.jsonData] : properties.jsonData;
                     var resdata = (typeof JSONData == 'string') ? JSON.parse(JSONData) : JSONData;
-                    if (actionConfig.query) {
-                        var resdata = await jpQuery((typeof JSONData == 'string') ? JSON.parse(JSONData) : JSONData, actionConfig.query);
+                    if (properties.query) {
+                        var resdata = await jpQuery((typeof JSONData == 'string') ? JSON.parse(JSONData) : JSONData, properties.query);
                     }
-                    varVault[actionConfig.variable] = resdata;
+                    varVault[properties.variable] = resdata;
                 }
                 resolve(varVault)
             } catch (err) {
@@ -480,9 +492,9 @@ const queryJson = (varVault, action) => {
     }
 }
 
-const joblogs = (job, startTime, { message, id, text, configuration }) => {
+const joblogs = (job, startTime, { message, id, text, nodeType }) => {
     try {
-        var logMsg = configuration.nodeType;
+        var logMsg = nodeType;
         var logObj = {
             timestamp: moment(),
             actionId: id,
