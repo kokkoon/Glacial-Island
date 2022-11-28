@@ -17,6 +17,7 @@ const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV || "development";
 const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
 const msgQueue = new Bull(MSG_QUEUE, keys.redisURL);
+console.log('connect', keys.redisURL);
 
 //ENV redisqueries
 const redisqueries = require('../services/redisqueries');
@@ -119,7 +120,7 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                     const reqAssignTaskData = await callAssignTask(job, varVault, action, actionLists);
                     job = reqAssignTaskData.job;
                     actionLists = reqAssignTaskData.actions;
-                    actionStatus = job.data.state;
+                    actionStatus = reqAssignTaskData.actionStatus;
 
                     break
                 case "BRANCH":
@@ -144,7 +145,7 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
     })
 }
 
-const callAssignTask = (job, varVault, action, actions) => {
+const callAssignTask = (job, varVault, action, actions, actionStatus) => {
     return new Promise(async (resolve, reject) => {
         try {
             debugger
@@ -180,6 +181,7 @@ const callAssignTask = (job, varVault, action, actions) => {
                     }
                     console.log("taskList:", taskList.length)
                     job.data.state = "Paused";
+
                     job.data.waitForResponse = true;
 
                     actions.unshift(action);
@@ -192,7 +194,7 @@ const callAssignTask = (job, varVault, action, actions) => {
                     };
 
                     job.log(JSON.stringify(logObj));
-
+                    actionStatus = "Paused"
                 } else {
                     var outcome = job.data.outcome;
                     var j = job.data.state;
@@ -211,6 +213,7 @@ const callAssignTask = (job, varVault, action, actions) => {
                     job.data.current_branch = branchActions;
                     job.update(job.data);
                     const resdata = await startExcution(job, varVault, branchActions);
+                    actionStatus = "Active"
                 }
 
                 logObj = { timestamp: moment(), actionId: action.actionId, status: "End", activity: action.configuration.actionTitle, log: `Exiting ${action.configuration.actionTitle}` };
@@ -218,7 +221,7 @@ const callAssignTask = (job, varVault, action, actions) => {
                 //job.data.state = "Active";
                 job.update(job.data);
             }
-            resolve({ job, actions })
+            resolve({ job, actions, actionStatus })
         } catch (err) {
             resolve({ job })
         }
@@ -442,7 +445,11 @@ const sendSMS = async (job, varVault, action) => {
 
             await recipientList.forEach(async (recipient) => {
                 try {
-                    const msg = await client.messages.create({ body: tempActionDef.messageBody, to: recipient, from: '+16262473170' }) //+12062079558
+                    const msg = await client.messages.create({ 
+                        body: tempActionDef.messageBody, 
+                        to: recipient, 
+                        from: '+16262473170' 
+                    }) //+12062079558
                     console.log(`Twilio message ID: ${msg.sid}`)
                 } catch (err) {
 
