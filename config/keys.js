@@ -1,7 +1,7 @@
-process.env.NODE_ENV = 'local'
-console.log("NODE_ENV: " + process.env.NODE_ENV);
+const NODE_ENV = process.env.NODE_ENV || "local";
+console.log("NODE_ENV: " + NODE_ENV);
 var keys;
-switch (process.env.NODE_ENV || "development") {
+switch (NODE_ENV) {
   case 'production':
     keys = require('./prod');
     break;

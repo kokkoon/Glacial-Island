@@ -1,6 +1,6 @@
 const keys = require('../config/keys');
 const request = require('request');
-const NODE_ENV = process.env.NODE_ENV || "development";
+const NODE_ENV = process.env.NODE_ENV || "local";
 
 const Authenticate = async (req, res, next) => {
     if (req.headers.authorization && req.headers.tenant) {

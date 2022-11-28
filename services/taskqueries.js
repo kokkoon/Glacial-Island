@@ -1,5 +1,5 @@
 const keys = require('../config/keys');
-const NODE_ENV = process.env.NODE_ENV || "development";
+const NODE_ENV = process.env.NODE_ENV || "local";
 const Bull = require("bull");
 const QUEUE_NAME= 'FLOW@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;

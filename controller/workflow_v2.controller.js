@@ -14,7 +14,7 @@ const jp = JSONPath;
 const keys = require('../config/keys');
 
 //ENV NODE_ENV
-const NODE_ENV = process.env.NODE_ENV || "development";
+const NODE_ENV = process.env.NODE_ENV || "local";
 const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
 
 //ENV redisqueries

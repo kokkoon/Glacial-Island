@@ -1,8 +1,7 @@
 const keys = require('./config/keys');
 const Bull = require("bull");
 const QUEUE_NAME= 'TASK';
-const REDIS_URL= keys.redisURL; //'redis://h:zwWbvx0uyH2ZYceqMAUzeHXm8u90ROnK@redis-13053.c1.asia-northeast1-1.gce.cloud.redislabs.com:13053'
-const taskQueue = new Bull(QUEUE_NAME, REDIS_URL);
+const taskQueue = new Bull(QUEUE_NAME, { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 
 taskQueue.process(function(job, done) {
   console.log("Processing task id:", job.id)

@@ -21,6 +21,7 @@ console.log = proxiedLog;
 const flowWorker = require('./worker-flow');
 //const emailWorker = require('./worker-email');
 
+console.log(redisqueries.allkeys);
 redisqueries.getAllQueues(resData => {
 	resData = resData.length === 0 ? ["FLOW", "TEST"] : resData
 	const qDashboard = GUI({
@@ -39,6 +40,31 @@ const dashboard = GUI({
 	queues: [
 		{
 			name: "FLOW@production",
+			hostId: "flow",
+			url: keys.redisURL 
+		},
+		{
+			name: "MESSAGE@production",
+			hostId: "flow",
+			url: keys.redisURL 
+		},
+		{
+			name: "FLOW@development",
+			hostId: "flow",
+			url: keys.redisURL 
+		},
+		{
+			name: "MESSAGE@development",
+			hostId: "flow",
+			url: keys.redisURL 
+		},
+		{
+			name: "FLOW@local",
+			hostId: "flow",
+			url: keys.redisURL 
+		},
+		{
+			name: "MESSAGE@local",
 			hostId: "flow",
 			url: keys.redisURL 
 		},
@@ -86,11 +112,6 @@ const dashboard = GUI({
 			name: "SCHEDULE@flowngin.com",
 			hostId: "flow",
 			url: keys.redisURL 
-        },
-		{
-			name: "LOGS@flowngin.com",
-			hostId: "flow",
-			url: keys.redisURL 
         }
 	]
 }, {
@@ -104,6 +125,6 @@ app.use('/dashboard', dashboard);
 require('./routes/jobRoutes')(app);
 
 const PORT = process.env.PORT || '4000';
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`)
 })

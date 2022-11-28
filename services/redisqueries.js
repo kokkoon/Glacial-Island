@@ -1,4 +1,4 @@
-const NODE_ENV = process.env.NODE_ENV || "development";
+const NODE_ENV = process.env.NODE_ENV || "local";
 const { promisify } = require('util');
 const keys = require('../config/keys');
 const redis = require('redis');
