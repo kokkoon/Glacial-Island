@@ -33,8 +33,32 @@ function togifyTotextvariableFunction(string) {
         return string
     }
 }
+
+const isJSON = (str) => {
+    try {
+        return (JSON.parse(str) && !!str);
+    } catch (e) {
+        return false;
+    }
+}
+
+function isCheckString(string) {
+    try {
+      if (typeof string == 'string') {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  }
+
 module.exports = {
     parseVariable: parseVariable,
     replaceVariable,
-    togifyTotextvariableFunction
+    togifyTotextvariableFunction,
+    isJSON,
+    isCheckString
 }
+

@@ -7,9 +7,9 @@ const Bull = require("bull");
 const QUEUE_NAME= 'FLOW@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
-const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
-const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
-const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL);
+const flowQueue = new Bull(QUEUE_NAME, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const taskQueue = new Bull(TASK_QUEUE, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const Auth = require("../services/authentication");
 const sample_flow_definition = require('../config/wf-definition-example.json');
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
@@ -344,7 +344,10 @@ module.exports = app => {
 			const replyMsg = "?: Command helps \
 				\ntask, tasks: Get list of pending tasks \
 				\napp[roved]: Approve a task \
-				\nrej[ected]: Reject a task"
+				\nrej[ected]: Reject a task \
+				\nlocation: Get location \
+				\ndemo: Demo buttons \
+				\nmore help: Redirect link"
 			console.log(`replyMsg: ${replyMsg}`)
 			twiml.message(replyMsg);
 			res.writeHead(200, {'Content-Type':'text/xml'});
@@ -352,15 +355,38 @@ module.exports = app => {
 			break
 		case "location":
 			client.messages.create({
-			   from: 'whatsapp:+16262473170',
-			   body: "Here is our office location",
-			   persistentAction: ['geo: 1.281422489647776,103.84804055799597'],
-			   to: req.body.From
-			 })
+				from: 'whatsapp:+16262473170',
+				body: "Here is our office location",
+				persistentAction: ['geo: 1.281422489647776,103.84804055799597'],
+				to: req.body.From
+				})
 			.then(message => {
-			  console.log(message.sid);
-			  res.send(true)
-			 })
+				console.log(message.sid);
+				res.send(true)
+				})
+			.catch(error => console.error('error: ', error.message));
+			break
+		case "demo":
+			client.messages.create({
+				from: 'whatsapp:+16262473170',
+				body: "Please select an action to be performed on task 10893237",
+				to: req.body.From
+				})
+			.then(message => {
+				console.log(message.sid);
+				res.send(true)
+				})
+			.catch(error => console.error('error: ', error.message));
+			break
+		case "more help":
+			client.messages.create({
+				from: 'whatsapp:+16262473170',
+				body: "For further enquiry, please tap below to call or visit out website.",
+				to: req.body.From
+			})
+			.then(message => {
+				res.send(true)
+			})
 			.catch(error => console.error('error: ', error.message));
 			break
 		default:

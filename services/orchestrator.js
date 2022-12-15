@@ -357,23 +357,37 @@ var exec1 = async (job, actions) => {
   return await exec1(job, actions);
 }
 
-var startflow = async (job) => {
-  // Start executing workflow actions...
+// var Oldstartflow = async (job) => {
+//   // Start executing workflow actions...
+//   console.log("Start executing workflow actions...");
+//   var state = null;
+//   if (job.data.workflow_definition) {
+//     state = await workflowController.startExcution(job, job.data.workflow_definition.variables, job.data.workflow_definition.actions[0].actions, true);
+//   } else {
+//     state = await exec1(job, job.data.definition.actions);
+//   }
+//   console.log("==============Job Completed..=================", state);
+//   //Exited execution of workflow actions
+//   job.data.state = state;
+//   job.data.jobEnd = moment();
+//   job.data['end'] = (state === "Completed") ? moment() : undefined;
+//   job.update(job.data);
+// }
+
+var startflow = async(job) => {
   console.log("Start executing workflow actions...");
   var state = null;
-  if (job.data.workflow_definition) {
-    state = await workflowController.startExcution(job, job.data.workflow_definition.variables, job.data.workflow_definition.actions[0].actions, true);
-  } else {
-    state = await exec1(job, job.data.definition.actions);
-  }
-
-
-  console.log("==============Job Completed..=================", state);
-  //Exited execution of workflow actions
-  job.data.state = state;
+  const data = await workflowController.startExcution(job, job.data.definition.variables, job.data.definition.actions, true);
+  state = data.status;
+  job.data.state = data.status;
   job.data.jobEnd = moment();
   job.data['end'] = (state === "Completed") ? moment() : undefined;
-  job.update(job.data);
+  job.data.definition = {
+    variables : job.data.definition.variables,
+    actions : data.actions
+  }
+  job.update( job.data);
+  console.log("==============Job Completed..=================", state);
 }
 
 module.exports = {

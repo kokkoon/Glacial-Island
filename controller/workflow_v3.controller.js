@@ -22,7 +22,7 @@ console.log('connect', keys.redisURL);
 //ENV redisqueries
 const redisqueries = require('../services/redisqueries');
 const SendMail = require('../services/SendMail');
-const { parseVariable } = require('./helper.controller');
+const { parseVariable, isJSON, isCheckString } = require('./helper.controller');
 const getvariables = require('./getvariables.controller');
 
 //SMS Config
@@ -56,10 +56,14 @@ const startExcution = async (job, variables, actions, intialExcution) => {
                 varVault = resData.varVault;
                 actionLists = resData.actionLists
                 job = resData.job;
+
+                if (resData.actionStatus == "Paused") {
+                    resolve({ status: resData.actionStatus, actions: actionLists });
+                    break;
+                }
                 actionStatus = resData.actionStatus
             }
-
-            resolve(actionStatus == 'Active' ? 'Completed' : actionStatus)
+            resolve({ status: actionStatus == 'Active' ? 'Completed' : actionStatus, actions: actionLists });
         } catch (err) {
             console.log(err.message);
             resolve("Failed")
@@ -107,7 +111,6 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                     break
                 case "Loop":
                     const reqLoopData = await loopFunction(job, varVault, action, actionLists);
-                    job = reqLoopData.job;
                     actionStatus = job.data.state;
                     break
                 case "Condition":
@@ -128,11 +131,17 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                     await callCondition(job, varVault, action, actionLists);
                     break
                 case "Call Web Service":
-                    const reqWebServiceData = await callWebService(action, varVault);
+                    const reqWebServiceData = await callWebService(action, varVault, job);
                     job = reqWebServiceData.job;
                     varVault = reqWebServiceData.varVault;
                     actionStatus = job.data.state;
                     break
+                case "Collection":
+                    const reqCollectioneData = await callCollectionOperation(varVault, action, job);
+                    job = reqCollectioneData.job;
+                    varVault = reqCollectioneData.varVault;
+                    actionStatus = job.data.state;
+                    break;
                 default:
                     console.log("run other actions")
                     break
@@ -237,7 +246,7 @@ const callCondition = (job, varVault, action, mainAction) => {
                 let whenValue = "";
                 let variableValue = false;
                 if (properties.type == "variable") {
-                    whenValue = await replaceVariables(properties.whencondition, varVault, true);
+                    whenValue = await replaceVariablesString(properties.whencondition, varVault, true);
                 } else {
                     whenValue = properties.whencondition;
                 }
@@ -272,52 +281,51 @@ const callCondition = (job, varVault, action, mainAction) => {
                 console.log(j);
                 const resdata = await startExcution(job, varVault, branchActions);
 
-                { job }
+                resolve({ job })
             } else {
-                { job }
+                resolve({ job })
             }
         } catch (err) {
-            { job }
+            resolve({ job })
         }
     });
 }
-
 
 const loopFunction = async (job, varVault, action, mainAction) => {
     const properties = (action && action.configuration) ? action.configuration.properties : "";
     if (properties) {
         try {
-            let loopLength = 0, count = 0;
+            let loopLength = 0, count = 0, arrayLists = [];
             if (properties.type == "variable") {
                 loopLength = Number(ejsRender(properties.value, varVault))
             } else if (properties.type == "json") {
                 loopLength = JSON.parse(properties.value) ? JSON.parse(properties.value).length : 0;
             }
 
+            if (properties.type == "variable") {
+                arrayLists = replaceVariables(properties.selected_variable, varVault, true);
+            } else if (properties.type == "json") {
+                arrayLists = properties.value
+            }
+
             while (count < loopLength) {
                 varVault["loop_index_id"] = JSON.stringify(count)
 
-                if (properties.type == "variable") {
-                    varVault[properties.variable] = replaceVariables(properties.selected_variable, varVault, true);
-                } else if (properties.type == "json") {
-                    varVault[properties.variable] = properties.value
-                }
-
-                if (isCheckJSONParse(varVault[properties.variable])) {
-                    varVault[properties.variable] = JSON.parse(varVault[properties.variable]);
-                    varVault[properties.variable] = (varVault[properties.variable] && varVault[properties.variable].length) ? JSON.stringify(varVault[properties.variable][count]) : {}
+                if (isCheckJSONParse(arrayLists)) {
+                    let arrayJsonLists = JSON.parse(arrayLists);
+                    varVault[properties.variable] = (arrayJsonLists && arrayJsonLists.length) ? JSON.stringify(arrayJsonLists[count]) : {}
                 }
 
                 let loopActions = JSON.parse(JSON.stringify(action.branches[0].actions));
                 const resdata = await startExcution(job, varVault, loopActions);
                 count++
             }
-            { job }
+            return ({ job })
         } catch (err) {
-            { job }
+            return ({ job })
         }
     } else {
-        { job }
+        return ({ job })
     }
 }
 
@@ -339,6 +347,60 @@ const convertString = (string, varVault) => {
 
 const getObjectKey = (string, index) => {
     return replaceall("}}", "", replaceall("{{", "", string)).split(".")[index];
+}
+
+const replaceVariableFunction = (string, Variables, options, format) => {
+    try {
+        var gv = [], s;
+        var arr = [];
+        string = replaceall("]]", ']]$', replaceall("[[", '$[[', string))
+        const regex1 = /\$([.*+?^$(){[\]}:@"0-9a-zA-Z-_.,\/\']+)\$/gm; // "[[{value:{{user.name}}]]"
+        const regex2 = /\{{([0-9a-zA-Z-_., \/\']+)\}}/gm; // {{user.firstname}}
+
+        [regex1, regex2].forEach(ele => {
+            while ((s = ele.exec(string)) !== null) {
+                if (s.index === ele.lastIndex) {
+                    ele.lastIndex++;
+                }
+                console.log(s[0]);
+                gv.push(replaceall("]]$", ']]', replaceall("$[[", '[[', s[0])));
+            }
+        });
+
+        string = replaceall("$[[", '[[', replaceall("]]$", ']]', string))
+
+        for (let index = 0; index < gv.length; index++) {
+            const objectKey = getObjectKey(gv[index], 0);
+            let variable = isJSON(Variables[objectKey]) ? JSON.parse(Variables[objectKey]) : Variables[objectKey];
+            if (variable && typeof variable == "object") {
+                const objectKe2 = getObjectKey(gv[index], 1);
+                string = replaceall(gv[index], variable[objectKe2], string)
+            } else if (variable) {
+                if (typeof variable == 'string') {
+                    string = replaceall('$', '', replaceall(gv[index], `'${variable}'`, string))
+                } else {
+                    string = replaceall('$', '', replaceall(gv[index], variable, string))
+                }
+            } else if (variable == '') {
+                string = replaceall('$', '', replaceall(gv[index], `'${variable}'`, string))
+            }
+        }
+
+        if (isJSON(string)) {
+            var tempString = JSON.parse(string)
+            if (tempString.length != 0) {
+                string = tempString[0][0].value;
+            }
+        }
+
+        if (options.isExpression) {
+            //   string = HotFormulaParser(string)
+        }
+
+        return (string)
+    } catch (err) {
+        return string
+    }
 }
 
 const replaceVariables = (action, varVault, isString) => {
@@ -376,17 +438,28 @@ const replaceVariables = (action, varVault, isString) => {
 
 }
 
-const isCheckString = (string) => {
+const replaceVariablesString = (action, varVault, isString) => {
     try {
-        if (typeof string == 'string') {
-            return true;
-        } else {
-            return false;
+        var gv = [], s, string = isString ? action : JSON.stringify(action);
+        const regex = /\{{([0-9a-zA-Z-_., \/\']+)\}}/gm;
+        while ((s = regex.exec(string)) !== null) {
+            if (s.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            gv.push(s[0]);
         }
-    } catch (e) {
-        return false;
+
+        for (let index = 0; index < gv.length; index++) {
+            const objectKey = gv[index];
+            string = string.replace(gv[index], ejsRender(objectKey, varVault))
+        }
+
+        return isString ? string : JSON.parse(string)
+    } catch (err) {
+        return isString ? string : JSON.parse(string)
     }
 }
+
 
 const isCheckJSONParse = (string) => {
     try {
@@ -426,7 +499,6 @@ const sendEmail = async (job, varVault, action) => {
     }
 }
 
-
 const sendSMS = async (job, varVault, action) => {
     try {
 
@@ -445,10 +517,10 @@ const sendSMS = async (job, varVault, action) => {
 
             await recipientList.forEach(async (recipient) => {
                 try {
-                    const msg = await client.messages.create({ 
-                        body: tempActionDef.messageBody, 
-                        to: recipient, 
-                        from: '+16262473170' 
+                    const msg = await client.messages.create({
+                        body: tempActionDef.messageBody,
+                        to: recipient,
+                        from: '+16262473170'
                     }) //+12062079558
                     console.log(`Twilio message ID: ${msg.sid}`)
                 } catch (err) {
@@ -467,7 +539,6 @@ const sendSMS = async (job, varVault, action) => {
     }
 
 }
-
 
 const queryJson = (varVault, action) => {
     let properties = (action && action.configuration) ? action.configuration.properties : "";
@@ -518,15 +589,121 @@ const joblogs = (job, startTime, { message, id, text, nodeType }) => {
     }
 }
 
-const ejsRender = (value, varVault) => {
-    value = replaceall("}}", "%>", replaceall("{{", "<%=", value));
-    value = replaceall("%}", "%>", replaceall("{%", "<%", value));
-    let varVaultdata = {};
-    Object.keys(varVault).forEach(ele => {
-        varVaultdata[ele] = JSON.parse(varVault[ele])
-    });
-    const outputHtml = ejs.render(value, varVaultdata);
-    return outputHtml;
+// const ejsRender = (value, varVault) => {
+//     value = replaceall("}}", "%>", replaceall("{{", "<%=", value));
+//     value = replaceall("%}", "%>", replaceall("{%", "<%", value));
+//     let varVaultdata = {};
+//     Object.keys(varVault).forEach(ele => {
+//         varVaultdata[ele] = JSON.parse(varVault[ele])
+//     });
+//     const outputHtml = ejs.render(value, varVaultdata);
+//     return outputHtml;
+// }
+
+const bodyreplaceVariables = (action, varVault, isString, format) => {
+    try {
+        var gv = [], s, string = isString ? action : JSON.stringify(action);
+        const regex = /\{{([0-9a-zA-Z-_., \/\']+)\}}/gm;
+        while ((s = regex.exec(string)) !== null) {
+            if (s.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            gv.push(s[0]);
+        }
+
+        for (let index = 0; index < gv.length; index++) {
+            const objectKey = getObjectKey(gv[index], 0);
+            if (varVault[objectKey]) {
+                let varData = (JSON.parse(varVault[objectKey]) && JSON.parse(varVault[objectKey]).result) ? JSON.parse(varVault[objectKey]).result : JSON.parse(varVault[objectKey]);
+                if (varData != "") {
+                    let objectkeylen = replaceall("}}", "", replaceall("{{", "", gv[index]))
+                    const pathExp = "$." + objectkeylen + "";
+                    const editDataTableComponents = jp.query({ [objectKey]: varData }, pathExp, 1000);
+                    if (editDataTableComponents[0]) {
+                        if (isCheckString(editDataTableComponents[0])) {
+                            string = replaceall(gv[index], (convertString(editDataTableComponents[0], varVault)), string)
+                        } else {
+                            if (typeof editDataTableComponents[0] == "string") {
+                                string = replaceall(gv[index], (JSON.stringify(editDataTableComponents[0])), string)
+                            } else {
+                                string = replaceall(`"${gv[index]}"`, (JSON.stringify(editDataTableComponents[0])), string)
+                            }
+                        }
+                    } else {
+                        string = replaceall(gv[index], "", string)
+                    }
+                }
+            } else {
+                string = replaceall(gv[index], "", string)
+            }
+
+        }
+        return (!isString || format == "JSON") ? JSON.parse(string) : string;
+    } catch (err) {
+        console.log(err);
+
+        return isString ? string : JSON.parse(string)
+    }
+
+}
+
+const callCollectionOperation = (varVault, actionData, job) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            let action = (actionData && actionData.configuration) ? actionData.configuration.properties : "";
+            if (action) {
+                let count = 0;
+                //Variable To Orignal Value 
+                if ((action.requestType == 2 || action.requestType == 3) && action.filters && action.filters != "") {
+                    let ObjFilter = isJSON(action.filters) ? JSON.parse(action.filters) : action.filters;
+                    if (ObjFilter.length != 0) {
+                        while ((ObjFilter.length - 1) >= count) {
+                            ObjFilter[count].value = replaceVariablesString(ObjFilter[count].value, varVault, true)
+                            ObjFilter[count].value = await replaceVariablesString(ObjFilter[count].value, varVault, null);
+                            ObjFilter[count].field = ObjFilter[count].field == "documentId" ? "_id" : ObjFilter[count].field;
+                            count++;
+                        }
+                    } ``
+                    action.filters = ObjFilter;
+                }
+
+                //Variable To Orignal Value 
+                if (action.fetchRecordField && action.fetchRecordValue) {
+                    action.fetchRecordValue = await replaceVariableFunction(action.fetchRecordValue, varVault, null);
+                }
+
+                if (action.reqBody) {
+                    action.reqBody = await bodyreplaceVariables(action.reqBody, varVault, true);
+                    action.reqBody = JSON.parse(action.reqBody)
+                }
+
+                const requestData = {
+                    ...action
+                }
+
+                var options = {
+                    method: 'POST',
+                    url: `${keys.PortalHost}/callCollectionOperation/endpoint`,
+                    body: requestData,
+                    json: true
+                };
+
+                const res = await request(options)
+                if (res.status) {
+                    varVault[action.variable] = JSON.stringify(res.data)
+                    resolve({ job, varVault })
+                } else {
+                    resolve({ job, varVault })
+                }
+            } else {
+                resolve({ job, varVault })
+            }
+
+        } catch (err) {
+            console.log(err)
+            resolve({ job, varVault })
+        }
+    })
 }
 
 const ejsRenderJson = (value, varVault) => {
@@ -542,7 +719,7 @@ const ejsRenderJson = (value, varVault) => {
     return JSONData;
 }
 
-const callWebService = async (actionDef, varVault) => {
+const callWebService = async (actionDef, varVault, job) => {
     try {
         const url = actionDef.apiUrl
         const method = actionDef.reqMethod;
@@ -558,11 +735,31 @@ const callWebService = async (actionDef, varVault) => {
         options.json = true;
         const resWebrequest = await request(options);
         varVault[actionDef.variable] = JSON.stringify(resWebrequest);
-        return varVault
+        return { job, varVault }
     } catch (err) {
-        return varVault
+        return { job, varVault }
     }
 
+}
+
+//New Flow
+String.prototype.replaceAll = function (snytxt1, snytxt2) {
+    return replaceall(snytxt1, snytxt2, this)
+};
+
+const ejsRender = (value, varVault) => {
+    try {
+        value = value.replaceAll("}}", "%>").replaceAll("{{", "<%=") //eplaceall("}}", "%>", replaceall("{{", "<%=", value));
+        let varVaultdata = {};
+        Object.keys(varVault).forEach(ele => {
+            varVaultdata[ele] = JSON.parse(varVault[ele])
+        });
+        let outputHtml = ejs.render(value, varVaultdata);
+        return outputHtml.replaceAll("%>", "}}").replaceAll("<%=", "{{");
+    } catch (err) {
+        console.log(err);
+        return value.replaceAll("%>", "}}").replaceAll("<%=", "{{");
+    }
 }
 
 module.exports = {
