@@ -377,7 +377,8 @@ var exec1 = async (job, actions) => {
 var startflow = async(job) => {
   console.log("Start executing workflow actions...");
   var state = null;
-  const data = await workflowController.startExcution(job, job.data.definition.variables, job.data.definition.actions, true);
+  let data = await workflowController.startExcution(job, job.data.definition.variables, job.data.definition.actions, true);
+  data.status = data.status == 'Queued' ? "Completed" : data.status;
   state = data.status;
   job.data.state = data.status;
   job.data.jobEnd = moment();

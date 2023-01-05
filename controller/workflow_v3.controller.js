@@ -24,6 +24,7 @@ const redisqueries = require('../services/redisqueries');
 const SendMail = require('../services/SendMail');
 const { parseVariable, isJSON, isCheckString } = require('./helper.controller');
 const getvariables = require('./getvariables.controller');
+const S = require('string');
 
 //SMS Config
 const accountSid = keys.twilioAccountSid;
@@ -97,13 +98,13 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                 case "Log Message":
                     const properties = (action && action.configuration) ? action.configuration.properties : "";
                     if (properties) {
-                        var logMsg = ejsRender(properties.value, varVault)
+                        var logMsg = ejsRenderLog(properties.value, varVault,)
                         var logObj = {
                             timestamp: moment(),
-                            actionId: action.id,
+                            actionId: action.actionId,
                             status: "Custom",
                             activity: action.text,
-                            log: logMsg
+                            log: S(logMsg).unescapeHTML().s
                         };
                         job.log(JSON.stringify(logObj))
                         actionStatus = job.data.state;
@@ -132,15 +133,11 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                     break
                 case "Call Web Service":
                     const reqWebServiceData = await callWebService(action, varVault, job);
-                    job = reqWebServiceData.job;
                     varVault = reqWebServiceData.varVault;
-                    actionStatus = job.data.state;
                     break
                 case "Collection":
                     const reqCollectioneData = await callCollectionOperation(varVault, action, job);
-                    job = reqCollectioneData.job;
                     varVault = reqCollectioneData.varVault;
-                    actionStatus = job.data.state;
                     break;
                 default:
                     console.log("run other actions")
@@ -279,8 +276,8 @@ const callCondition = (job, varVault, action, mainAction) => {
                 var j = job.data.state;
 
                 console.log(j);
-                const resdata = await startExcution(job, varVault, branchActions);
-
+                await startExcution(job, varVault, branchActions);
+                job.data.state = "Active";
                 resolve({ job })
             } else {
                 resolve({ job })
@@ -320,6 +317,7 @@ const loopFunction = async (job, varVault, action, mainAction) => {
                 const resdata = await startExcution(job, varVault, loopActions);
                 count++
             }
+            job.data.state = "Active";
             return ({ job })
         } catch (err) {
             return ({ job })
@@ -755,6 +753,17 @@ const ejsRender = (value, varVault) => {
             varVaultdata[ele] = JSON.parse(varVault[ele])
         });
         let outputHtml = ejs.render(value, varVaultdata);
+        return outputHtml.replaceAll("%>", "}}").replaceAll("<%=", "{{");
+    } catch (err) {
+        console.log(err);
+        return value.replaceAll("%>", "}}").replaceAll("<%=", "{{");
+    }
+}
+
+const ejsRenderLog = (value, varVault) => {
+    try {
+        value = value.replaceAll("}}", "%>").replaceAll("{{", "<%=") //eplaceall("}}", "%>", replaceall("{{", "<%=", value));
+        let outputHtml = ejs.render(value, varVault);
         return outputHtml.replaceAll("%>", "}}").replaceAll("<%=", "{{");
     } catch (err) {
         console.log(err);
