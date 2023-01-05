@@ -22,7 +22,7 @@ console.log('connect', keys.redisURL);
 //ENV redisqueries
 const redisqueries = require('../services/redisqueries');
 const SendMail = require('../services/SendMail');
-const { parseVariable, isJSON, isCheckString } = require('./helper.controller');
+const { parseVariable, isJSON, isCheckString, ejsRender } = require('./helper.controller');
 const getvariables = require('./getvariables.controller');
 const S = require('string');
 
@@ -42,6 +42,8 @@ const startExcution = async (job, variables, actions, intialExcution) => {
                     varVault[ele] = JSON.stringify(variablesData[ele])
                 });
             }
+
+            console.log(varVault);
 
             let actionLists = JSON.parse(JSON.stringify(actions));
 
@@ -75,10 +77,6 @@ const startExcution = async (job, variables, actions, intialExcution) => {
 
 //Action Lists 
 const callAction = (job, varVault, action, actionLists, actionStatus) => {
-    console.log("===========================================");
-    console.log(job.data.state);
-    // job.data.data[variable.name]
-    console.log("===========================================");
     return new Promise(async (resolve, reject) => {
         try {
             switch (action.configuration.nodeType) {
@@ -98,7 +96,7 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                 case "Log Message":
                     const properties = (action && action.configuration) ? action.configuration.properties : "";
                     if (properties) {
-                        var logMsg = ejsRenderLog(properties.value, varVault,)
+                        var logMsg = ejsRender(properties.value, varVault,)
                         var logObj = {
                             timestamp: moment(),
                             actionId: action.actionId,
@@ -587,17 +585,6 @@ const joblogs = (job, startTime, { message, id, text, nodeType }) => {
     }
 }
 
-// const ejsRender = (value, varVault) => {
-//     value = replaceall("}}", "%>", replaceall("{{", "<%=", value));
-//     value = replaceall("%}", "%>", replaceall("{%", "<%", value));
-//     let varVaultdata = {};
-//     Object.keys(varVault).forEach(ele => {
-//         varVaultdata[ele] = JSON.parse(varVault[ele])
-//     });
-//     const outputHtml = ejs.render(value, varVaultdata);
-//     return outputHtml;
-// }
-
 const bodyreplaceVariables = (action, varVault, isString, format) => {
     try {
         var gv = [], s, string = isString ? action : JSON.stringify(action);
@@ -737,39 +724,8 @@ const callWebService = async (actionDef, varVault, job) => {
     } catch (err) {
         return { job, varVault }
     }
-
 }
 
-//New Flow
-String.prototype.replaceAll = function (snytxt1, snytxt2) {
-    return replaceall(snytxt1, snytxt2, this)
-};
-
-const ejsRender = (value, varVault) => {
-    try {
-        value = value.replaceAll("}}", "%>").replaceAll("{{", "<%=") //eplaceall("}}", "%>", replaceall("{{", "<%=", value));
-        let varVaultdata = {};
-        Object.keys(varVault).forEach(ele => {
-            varVaultdata[ele] = JSON.parse(varVault[ele])
-        });
-        let outputHtml = ejs.render(value, varVaultdata);
-        return outputHtml.replaceAll("%>", "}}").replaceAll("<%=", "{{");
-    } catch (err) {
-        console.log(err);
-        return value.replaceAll("%>", "}}").replaceAll("<%=", "{{");
-    }
-}
-
-const ejsRenderLog = (value, varVault) => {
-    try {
-        value = value.replaceAll("}}", "%>").replaceAll("{{", "<%=") //eplaceall("}}", "%>", replaceall("{{", "<%=", value));
-        let outputHtml = ejs.render(value, varVault);
-        return outputHtml.replaceAll("%>", "}}").replaceAll("<%=", "{{");
-    } catch (err) {
-        console.log(err);
-        return value.replaceAll("%>", "}}").replaceAll("<%=", "{{");
-    }
-}
 
 module.exports = {
     startExcution: startExcution

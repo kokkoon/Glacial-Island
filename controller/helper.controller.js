@@ -1,3 +1,7 @@
+const ejs = require('ejs');
+const replaceall = require("replaceall");
+
+
 const parseVariable = (str, data) => {
     var varNames = str.match(/(?<=\<\<).+?(?=\>\>)/g);
     console.log(varNames)
@@ -44,21 +48,48 @@ const isJSON = (str) => {
 
 function isCheckString(string) {
     try {
-      if (typeof string == 'string') {
-        return true;
-      } else {
-        return false;
-      }
+        if (typeof string == 'string') {
+            return true;
+        } else {
+            return false;
+        }
     } catch (e) {
-      return false;
+        return false;
     }
-  }
+}
+
+//New Flow
+String.prototype.replaceAll = function (snytxt1, snytxt2) {
+    return replaceall(snytxt1, snytxt2, this)
+};
+
+const ejsRender = (value, varVault, isVarObjects) => {
+    try {
+
+        value = value.replaceAll("}}", "%>").replaceAll("{{", "<%=")
+        let varVaultdata = isVarObjects ? varVault : {};
+
+
+        if (!isVarObjects) {
+            Object.keys(varVault).forEach(ele => {
+                varVaultdata[ele] = JSON.parse(varVault[ele])
+            });
+        }
+
+        let outputHtml = ejs.render(value, varVaultdata);
+        return outputHtml.replaceAll("%>", "}}").replaceAll("<%=", "{{");
+    } catch (err) {
+        console.log(err);
+        return value.replaceAll("%>", "}}").replaceAll("<%=", "{{");
+    }
+}
 
 module.exports = {
     parseVariable: parseVariable,
     replaceVariable,
     togifyTotextvariableFunction,
     isJSON,
-    isCheckString
+    isCheckString,
+    ejsRender
 }
 

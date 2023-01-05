@@ -4,7 +4,7 @@ const jp = require('jsonpath');
 const URL = require('url')
 const replaceall = require("replaceall");
 
-const { replaceVariable, togifyTotextvariableFunction } = require('./helper.controller');
+const { replaceVariable, togifyTotextvariableFunction, ejsRender } = require('./helper.controller');
 
 const getvariables = async (extSources, queryStringObjet) => {
     var extData = {}, count = 0;
@@ -144,7 +144,7 @@ const loadExrVariable = async (reqPayload) => {
             case 'Sharepoint':
             case 'Web request':
                 var reqData = {
-                    "url": source.url,
+                    "url": ejsRender(source.url, extData, true),
                     "method": 'GET',
                     "connId": source.connId,
                     "dataSrcType": source.type,
