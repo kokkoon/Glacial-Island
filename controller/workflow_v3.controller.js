@@ -37,6 +37,7 @@ const startExcution = async (job, variables, actions, intialExcution) => {
             let varVault = intialExcution ? {} : variables, edges = actions.edges, nodes = actions.nodes;
             let actionStatus = 'Completed'
             if (intialExcution) {
+                console.log(variables);
                 let variablesData = await getvariables(variables);
                 Object.keys(variablesData).forEach(ele => {
                     varVault[ele] = JSON.stringify(variablesData[ele])
@@ -476,13 +477,24 @@ const sendEmail = async (job, varVault, action) => {
             properties['nodeType'] = action.nodeType
             console.log(varVault);
             const startTime = moment();
-            const mailOptions = {
+            var mailOptions = {
                 from: "'Glozic' <workflow@glozic.com>", // sender address
                 emailTo: ejsRender(properties.sendTo, varVault), // list of receivers
                 emailSubject: (properties.subject ? "Re: " + ejsRender(properties.subject, varVault) : "Glozic workflow"), // Subject line
                 emailBody: "parsed reply", // plain text body
             };
+
+
+            if (properties.ccTo && properties.ccTo != "") {
+                mailOptions["cc"] = ejsRender(properties.ccTo, varVault)
+            }
+
+            if (properties.bccTo && properties.bccTo != "") {
+                mailOptions["bcc"] = ejsRender(properties.bccTo, varVault)
+            }
+
             console.log(mailOptions);
+
             mailOptions.emailBody = ejsRender(properties.messageBody, varVault);
             await SendMail.sendEmail(mailOptions);
             joblogs(job, startTime, properties)

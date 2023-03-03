@@ -9,15 +9,19 @@ const { replaceVariable, togifyTotextvariableFunction, ejsRender } = require('./
 const getvariables = async (extSources, queryStringObjet) => {
     var extData = {}, count = 0;
     try {
-
         extSources = await loadExtDataInputVariable(extSources, queryStringObjet);
 
         extSources.forEach(source => {
             if (source.type == "Input Variable") {
                 extData[source.var] = source.defaultValue;
             }
+
+            if(source.var=="document"){
+                extData[source.var] = source.value;
+            }
         });
 
+        
         const InputVariable = extSources.filter(x => x.type == "Input Variable")
 
         //Load Variables

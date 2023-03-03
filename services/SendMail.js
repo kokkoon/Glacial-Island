@@ -15,6 +15,14 @@ const sendEmail = async (payload) => {
         host: payload.host ? payload.host : "portal"
     };
 
+    if (payload.cc && payload.cc != "") {
+        mailOptions["cc"] = payload.cc
+    }
+
+    if (payload.bcc && payload.bcc != "") {
+        mailOptions["bcc"] = payload.bcc
+    }
+
     if (mailOptions.html) {
         await nodemailersendMail(mailOptions)
     } else {
