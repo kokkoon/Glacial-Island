@@ -117,7 +117,17 @@ const dashboard = GUI({
 			name: "Logs@local",
 			hostId: "flow",
 			url: keys.redisURL 
-        }
+        },
+		{
+			name: "Logs@development",
+			hostId: "flow",
+			url: keys.redisURL 
+		},
+		{
+			name: "Logs@production",
+			hostId: "flow",
+			url: keys.redisURL 
+		},
 	]
 }, {
 	basePath: "/",
