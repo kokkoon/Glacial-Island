@@ -5,9 +5,11 @@ const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV || "local";
 const Bull = require("bull");
 const QUEUE_NAME = 'FLOW@' + NODE_ENV;
+const LOGS_QUEUE = 'Logs@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
 const flowQueue = new Bull(QUEUE_NAME, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const logQueue = new Bull(LOGS_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const taskQueue = new Bull(TASK_QUEUE, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const Auth = require("../services/authentication");
@@ -451,6 +453,89 @@ module.exports = app => {
 
 		//console.log("SESSION: ", req.session)
 		//res.set('Content-Type', 'text/xml')
+	});
+
+
+	//Anup Log system store in redis flow
+
+	app.post('/create-log', async function (req, res) {
+		const jobDefinition = req.body;
+		console.log(LOGS_QUEUE);
+		redisqueries.instanceNumber(`bull:${LOGS_QUEUE}:id`)
+			.then(uniqueId => {
+				const JobOpts = {
+					...jobDefinition.id && { jobId: jobDefinition.id + "-" + uniqueId }
+				};
+				console.log("Posting ", "Log definition", JobOpts);
+				jobDefinition.name = jobDefinition.name;
+				jobDefinition.tenant = req.headers.tenant;
+				jobDefinition.state = "Completed";
+				logQueue.add(jobDefinition, JobOpts)
+					.then(result => {
+						console.log("jobId:", result.id, "jobState:", result.getState())
+						res.json({ "status": true, "data": result, "status_code": 200 })
+					}, error => {
+						console.log("error:", error)
+						res.json({ "status": false, "message": error.message, "status_code": 401 });
+					})
+					.catch(alert => {
+						console.log("alert:", alert)
+						res.json({ "status": false, "message": alert.message, "status_code": 401 });
+					})
+			})
+			.catch(alert => {
+				res.json({ "status": false, "message": alert.message, "status_code": 401 })
+			})
 	})
+
+	app.get('/get-logs/:flowId', function (req, res) {
+		const flowId = req.params.flowId;
+
+		redisqueries.allkeys(`bull:${LOGS_QUEUE}:${flowId}-*[^s]`)
+			.then(async keys => {
+				//console.log(keys);
+				const instList = []
+				var inst = {}
+				var getJobList = new Promise((resolve, reject) => {
+					strRegex = new RegExp(`bull\\:${LOGS_QUEUE}\\:(.*)`);
+					keys.forEach(async (key, i, array) => {
+						//console.log(key, i)
+						//if (!key.endsWith(":logs")) {
+						//inst = await flowQueue.getJob(key.match(/bull\:FLOW\:(.*)/)[1])
+						console.log(strRegex);
+						inst = await logQueue.getJob(key.match(strRegex)[1])
+						if (inst) instList.push(inst)
+						//}
+						if (i === array.length - 1) resolve();
+					})
+				})
+
+				getJobList.then(() => {
+					console.log(`Log instances for ${flowId}:`, instList.length);
+					if (instList.length > 0) {
+						let lists = instList.sort(function (a, b) {
+							return new Date(b.timestamp) - new Date(a.timestamp);
+						});
+						lists = lists.map(x => ({ ...x.data })).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+						lists.forEach(ele => {
+							delete ele.start;
+							delete ele.state;
+						})
+						res.status(200).json({ "status": true, "data": lists })
+					} else {
+						res.json({ "status": false, "data": [], "status_code": 401 })
+					}
+				})
+			}, error => {
+				console.log("error:", error);
+				res.json({ "status": false, "message": "Found no matching keys", "status_code": 401 });
+			})
+			.catch(alert => {
+				console.log("(ops!)alert:", alert);
+				res.json({ "status": false, "message": alert.message, "status_code": 401 })
+			})
+
+	})
+
 
 }

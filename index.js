@@ -112,6 +112,11 @@ const dashboard = GUI({
 			name: "SCHEDULE@flowngin.com",
 			hostId: "flow",
 			url: keys.redisURL 
+        },
+		{
+			name: "Logs@local",
+			hostId: "flow",
+			url: keys.redisURL 
         }
 	]
 }, {
