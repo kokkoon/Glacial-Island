@@ -44,8 +44,6 @@ const startExcution = async (job, variables, actions, intialExcution) => {
                 });
             }
 
-            console.log(varVault);
-
             let actionLists = JSON.parse(JSON.stringify(actions));
 
             while (actionLists.length > 0) {
@@ -437,14 +435,12 @@ const replaceVariables = (action, varVault, isString) => {
 
 const replaceVariablesString = (action, varVault, isString) => {
     try {
-        var gv = [], s, string = isString ? action : JSON.stringify(action);
-        const regex = /\{{([0-9a-zA-Z-_., \/\']+)\}}/gm;
-        while ((s = regex.exec(string)) !== null) {
-            if (s.index === regex.lastIndex) {
-                regex.lastIndex++;
+        var gv = [], s, string = isString ? action : JSON.stringify(action), match;
+        const regex = /{{([^{}[\]]*?(?:(?:\[[^\]]*\])[^{}[\]]*?)*)}}/g;
+            while (match = regex.exec(string)) {
+                console.log(match[1]);
+                gv.push(`{{${match[1]}}}`);
             }
-            gv.push(s[0]);
-        }
 
         for (let index = 0; index < gv.length; index++) {
             const objectKey = gv[index];
@@ -664,10 +660,12 @@ const callCollectionOperation = (varVault, actionData, job) => {
                     action.filters = ObjFilter;
                 }
 
+
                 //Variable To Orignal Value 
                 if (action.fetchRecordField && action.fetchRecordValue) {
-                    action.fetchRecordValue = await replaceVariableFunction(action.fetchRecordValue, varVault, null);
+                    action.fetchRecordValue = await replaceVariablesString(action.fetchRecordValue, varVault, true);
                 }
+
 
                 if (action.reqBody) {
                     action.reqBody = await bodyreplaceVariables(action.reqBody, varVault, true);
@@ -716,24 +714,55 @@ const ejsRenderJson = (value, varVault) => {
     return JSONData;
 }
 
-const callWebService = async (actionDef, varVault, job) => {
+const callWebService = async (actionData, varVault, job) => {
     try {
-        const url = actionDef.apiUrl
-        const method = actionDef.reqMethod;
-        const headers = actionDef.reqHeaders;
-        const body = actionDef.reqBody;
+        let action = (actionData && actionData.configuration) ? actionData.configuration.properties : "";
+
+        // const url = action.apiUrl
+        // const method = actionDef.reqMethod;
+        // const headers = actionDef.reqHeaders;
+        // const body = actionDef.reqBody;
+
+        let requestUrl = await replaceVariables(action.apiUrl, varVault, true);
+        let requestHearder = await replaceVariables(action.reqHeaders, varVault, true);
+        let requestBody = await bodyreplaceVariables(action.reqBody, varVault, true);
+
+
+        var reqDatas = {
+            "url": requestUrl,
+            "connId": action.connId,
+            "dataSrcType": action.type,
+            "tenant": action.tenant,
+            "method": action.reqMethod,
+            "reqHeaders": requestHearder,
+            "isRequestHeaders": action.isRequestHeaders,
+            "reqBody": requestBody,
+            "isRequestBody": requestBody,
+            "contentType": action.contentType
+        }
+
+        console.log(reqDatas);
+
+        const replaceVariablesData = reqDatas
+        const url = replaceVariablesData.url ? replaceVariablesData.url : undefined;
+        const method = replaceVariablesData.method;
+        const headers = replaceVariablesData.reqHeaders;
+        const body = replaceVariablesData.reqBody;
+
 
         var options = {}
         options.method = method;
         options.url = url;
-        options.headers = headers;
-        method !== 'GET' ? options.body = body : null;
-        //options.body = body;
+        options.headers = (headers != "" && headers) ? JSON.parse(headers) : {};
+        method !== 'GET' ? options.body = (isJSON(body) ? JSON.parse(body) : body) : null;
         options.json = true;
+
+        console.log(options);
         const resWebrequest = await request(options);
-        varVault[actionDef.variable] = JSON.stringify(resWebrequest);
+        varVault[action.variable] = JSON.stringify(resWebrequest);
         return { job, varVault }
     } catch (err) {
+        console.log(err);
         return { job, varVault }
     }
 }
