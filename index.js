@@ -9,9 +9,9 @@ const redisqueries = require('./services/redisqueries');
 
 const { log } = console;
 function proxiedLog(...args) {
-  const l1 = ((new Error('log')).stack.split('\n')[2] || '…')
-  const line = (l1.match(/[^\/||^\\]*(?=\))/) || ['not found'])[0];
-  log.call(console, `../${line}-->`, ...args);
+	const l1 = ((new Error('log')).stack.split('\n')[2] || '…')
+	const line = (l1.match(/[^\/||^\\]*(?=\))/) || ['not found'])[0];
+	log.call(console, `../${line}-->`, ...args);
 }
 console.info = proxiedLog;
 console.log = proxiedLog;
@@ -23,123 +23,117 @@ const flowWorker = require('./worker-flow');
 
 console.log(redisqueries.allkeys);
 redisqueries.getAllQueues(resData => {
+	console.log("==============================");
+	console.log(resData);
+	console.log("==============================");
 	resData = resData.length === 0 ? ["FLOW", "TEST"] : resData
 	const qDashboard = GUI({
 		Bull,
-		queues: resData.map(v => ({name: v, hostId: "flow", url: keys.redisURL}))
+		queues: resData.map(v => ({ name: v, hostId: "flow", url: keys.redisURL }))
 	}, {
 		basePath: "/",
 		disableListen: true
 	});
-	
-	app.use('/queue_dashboard', qDashboard);
+
+	//app.use('/queue_dashboard', qDashboard);
+	app.use('/dashboard', qDashboard);
 })
 
-const dashboard = GUI({
-    Bull,
-	queues: [
-		{
-			name: "FLOW@production",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "MESSAGE@production",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "FLOW@development",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "MESSAGE@development",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "FLOW@local",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "MESSAGE@local",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "FLOW",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "SERVICE",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "MESSAGE",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "RESPONSE",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "REPONSE",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "SCHEDULE",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "SCHEDULE@DESKTOP-HO2F260",
-			hostId: "flow",
-			url: keys.redisURL 
-        },
-		{
-			name: "SCHEDULE@glozic.com",
-			hostId: "flow",
-			url: keys.redisURL 
-        },
-		{
-			name: "SCHEDULE@flowngin.com",
-			hostId: "flow",
-			url: keys.redisURL 
-        },
-		{
-			name: "Logs@local",
-			hostId: "flow",
-			url: keys.redisURL 
-        },
-		{
-			name: "Logs@development",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-		{
-			name: "Logs@production",
-			hostId: "flow",
-			url: keys.redisURL 
-		},
-	]
-}, {
-	basePath: "/",
-	disableListen: true
-});
+// const dashboard = GUI({
+//     Bull,
+// 	queues: [
+// 		{
+// 			name: "FLOW@production",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "MESSAGE@production",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "FLOW@development",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "MESSAGE@development",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "FLOW@local",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "MESSAGE@local",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "FLOW",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "SERVICE",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "MESSAGE",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "RESPONSE",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "REPONSE",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "SCHEDULE",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+// 		},
+// 		{
+// 			name: "SCHEDULE@DESKTOP-HO2F260",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+//         },
+// 		{
+// 			name: "SCHEDULE@glozic.com",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+//         },
+// 		{
+// 			name: "SCHEDULE@flowngin.com",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+//         },
+// 		{
+// 			name: "Logs@local",
+// 			hostId: "flow",
+// 			url: keys.redisURL 
+//         }
+// 	]
+// }, {
+// 	basePath: "/",
+// 	disableListen: true
+// });
 
 
-app.use('/dashboard', dashboard);
+//app.use('/dashboard', dashboard);
 
 require('./routes/jobRoutes')(app);
 
 const PORT = process.env.PORT || '4000';
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`)
+	console.log(`Server is running on port ${PORT}`)
 })
