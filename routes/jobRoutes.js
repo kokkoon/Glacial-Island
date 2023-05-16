@@ -44,6 +44,7 @@ module.exports = app => {
 
 	app.post('/orchestration', Auth.Authenticate, async function (req, res) {
 		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
+		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 		const url = URL.parse(req.url, true)
 		const mode = url.query.mode;
 		const jobDefinition = (mode && mode === "test") ? sample_flow_definition : req.body;
@@ -71,12 +72,14 @@ module.exports = app => {
 					})
 			})
 			.catch(alert => {
+				console.log(alert);
 				res.json({ "status": false, "message": alert.message, "status_code": 401 })
 			})
 	})
 
 	app.get('/orchestration/:id', Auth.Authenticate, function (req, res) {
-		console.log(req.params.id)
+		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
+		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 		flowQueue.getJob(req.params.id)
 			.then(job => {
 				console.log("result:", job)
@@ -99,6 +102,8 @@ module.exports = app => {
 	})
 
 	app.get('/logs/:jobId', Auth.Authenticate, function (req, res) {
+		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
+		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 		const jobId = req.params.jobId;
 		const url = URL.parse(req.url, true);
 		const start = url.query.start ? url.query.start : 0;
@@ -118,6 +123,8 @@ module.exports = app => {
 	})
 
 	app.post('/resumejob/:jobId/:outcome', Auth.Authenticate, async function (req, res) {
+		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
+		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 		const jobId = req.params.jobId;
 		const job = await flowQueue.getJob(jobId);
 		if (job.data.state !== "Paused") {
@@ -149,6 +156,7 @@ module.exports = app => {
 	app.get('/instances/:flowId', Auth.Authenticate, function (req, res) {
 		const flowId = req.params.flowId;
 		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
+		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 		redisqueries.allkeys(`bull:${QUEUE_NAME}:${flowId}-*[^s]`)
 			.then(async keys => {
 				//console.log(keys);
@@ -251,6 +259,8 @@ module.exports = app => {
 	})
 
 	app.patch('/task/:id/:outcome', Auth.Authenticate, async function (req, res) {
+		const TASK_QUEUE = 'TASK@' +  getEnv(req.headers.tenant);
+		const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
 		const id = req.params.id;
 		var outcome = req.params.outcome;
 		var taskInst = undefined;
@@ -278,6 +288,8 @@ module.exports = app => {
 	})
 
 	app.patch('/externaltask/:id/:outcome/:tenant?', async function (req, res) {
+		const TASK_QUEUE = 'TASK@' +  getEnv(req.headers.tenant);
+		const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
 		const id = req.params.id;
 		var outcome = req.params.outcome;
 		var tenant = req.params.tenant;

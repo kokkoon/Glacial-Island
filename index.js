@@ -27,6 +27,15 @@ redisqueries.getAllQueues(resData => {
 	console.log(resData);
 	console.log("==============================");
 	resData = resData.length === 0 ? ["FLOW", "TEST"] : resData
+
+
+	let tenantWorlfows = resData.filter(x => (x.search('FLOW@studio') >= 0 || x.search('FLOW@production') >= 0)).map(x => x.replace('FLOW@studio.', '').replace('FLOW@production.', ''))
+
+
+	tenantWorlfows.forEach((element) => {
+		console.log(element);
+		flowWorker.start(element)
+	});
 	const qDashboard = GUI({
 		Bull,
 		queues: resData.map(v => ({ name: v, hostId: "flow", url: keys.redisURL }))
