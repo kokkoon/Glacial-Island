@@ -1,21 +1,23 @@
 //const throng = require('throng');
 const Bull = require('bull');
 const keys = require('./config/keys');
-const NODE_ENV = process.env.NODE_ENV || "local";
-const QUEUE_NAME = 'FLOW@' + NODE_ENV;
-const LOGS_QUEUE = 'Logs@' + NODE_ENV;
 const orchestrator = require('./services/orchestrator');
 const moment = require('moment');
-
-//const workers = process.env.WEB_CONCURRENCY || 1;
-
 const maxJobsPerWorker = 1;
+const getEnv = (tenant) => {
+	let result = ""
+	if (tenant.search("-dev") >= 0) {
+		result = `studio.${tenant}`
+	} else {
+		result = `production.${tenant}`
+	}
+	return result
+}
 
-//function start() {
-    const flowQueue = new Bull(QUEUE_NAME, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
-
+function start(tenant) {
+    const QUEUE_NAME = 'FLOW@' + getEnv(tenant);
+    const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
     flowQueue.process(maxJobsPerWorker, async (job) => {
-        
         //Active
         if (!job.data.state) job.data.state = "Active";
 
@@ -29,27 +31,17 @@ const maxJobsPerWorker = 1;
                 job.data.data[element.name] = element.value
             });
         }
-        await job.update(job.data);
 
+        await job.update(job.data);
         // Start orchestration job
         orchestrator.startflow(job)
-        return { value: "job done"}
+        return { value: "job done" }
     })
-//}
 
-//function start() {
-    const logsQueue = new Bull(LOGS_QUEUE, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+    //throng({ workers, start })
+    console.log("Flow worker started for ", QUEUE_NAME);
+}
 
-    logsQueue.process(maxJobsPerWorker, async (job) => {
-        console.log(job.data);
-        //Active
-        if (!job.data.state) job.data.state = "Completed";
-        //Start
-        if (!job.data.start) job.data.start = moment();
-        await job.update(job.data);
-        return { value: "job done"}
-    })
-//}
-
-//throng({ workers, start })
-console.log("Flow worker started for ", QUEUE_NAME);
+module.exports = {
+    start: start
+}
