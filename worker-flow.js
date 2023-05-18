@@ -1,8 +1,7 @@
 //const throng = require('throng');
 const Bull = require('bull');
 const keys = require('./config/keys');
-const NODE_ENV = process.env.NODE_ENV || "local";
-const QUEUE_NAME = 'FLOW@' + NODE_ENV;
+const FLOW_QUEUE = 'WORKERFLOW';
 const orchestrator = require('./services/orchestrator');
 const moment = require('moment');
 
@@ -11,7 +10,7 @@ const moment = require('moment');
 const maxJobsPerWorker = 1;
 
 //function start() {
-    const flowQueue = new Bull(QUEUE_NAME, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+    const flowQueue = new Bull(FLOW_QUEUE, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 
     flowQueue.process(maxJobsPerWorker, async (job) => {
         
@@ -37,4 +36,4 @@ const maxJobsPerWorker = 1;
 //}
 
 //throng({ workers, start })
-console.log("Flow worker started for ", QUEUE_NAME);
+console.log("Flow worker started for ", FLOW_QUEUE);
