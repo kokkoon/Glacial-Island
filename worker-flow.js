@@ -1,23 +1,20 @@
 //const throng = require('throng');
 const Bull = require('bull');
 const keys = require('./config/keys');
+const NODE_ENV = process.env.NODE_ENV || "local";
+const QUEUE_NAME = 'FLOW@' + NODE_ENV;
 const orchestrator = require('./services/orchestrator');
 const moment = require('moment');
-const maxJobsPerWorker = 1;
-const getEnv = (tenant) => {
-	let result = ""
-	if (tenant.search("-dev") >= 0) {
-		result = `studio.${tenant}`
-	} else {
-		result = `production.${tenant}`
-	}
-	return result
-}
 
-function start(tenant) {
-    const QUEUE_NAME = 'FLOW@' + getEnv(tenant);
-    const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
+//const workers = process.env.WEB_CONCURRENCY || 1;
+
+const maxJobsPerWorker = 1;
+
+//function start() {
+    const flowQueue = new Bull(QUEUE_NAME, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+
     flowQueue.process(maxJobsPerWorker, async (job) => {
+        
         //Active
         if (!job.data.state) job.data.state = "Active";
 
@@ -31,17 +28,13 @@ function start(tenant) {
                 job.data.data[element.name] = element.value
             });
         }
-
         await job.update(job.data);
+
         // Start orchestration job
         orchestrator.startflow(job)
-        return { value: "job done" }
+        return { value: "job done"}
     })
+//}
 
-    //throng({ workers, start })
-    console.log("Flow worker started for ", QUEUE_NAME);
-}
-
-module.exports = {
-    start: start
-}
+//throng({ workers, start })
+console.log("Flow worker started for ", QUEUE_NAME);

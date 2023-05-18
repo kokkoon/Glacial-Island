@@ -1,33 +1,23 @@
 const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV || "local";
 const Bull = require("bull");
-const QUEUE_NAME = 'FLOW@' + NODE_ENV;
+const QUEUE_NAME= 'FLOW@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
-
+const flowQueue = new Bull(QUEUE_NAME, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const taskQueue = new Bull(TASK_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const emailQueue = new Bull(EMAIL_QUEUE,keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const Auth = require("./authentication");
 const redisqueries = require('./redisqueries');
 
-const getEnv = (tenant) => {
-	let result = ""
-	if (tenant.search("-dev") >= 0) {
-		result = `studio.${tenant}`
-	} else {
-		result = `production.${tenant}`
-	}
-	return result
-}
-
-const closePendingTasks = (task, outcome,tenant) => {
-	const TASK_QUEUE = 'TASK@' + getEnv(tenant);
-	const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
+const closePendingTasks = (task, outcome) => {
 	var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
 	redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 		.then(async keys => {
 			console.log(`TASKQ 3. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
-			keys.splice(keys.indexOf(task.queue.keys[''] + task.id), 1);
-
-			if (keys.length > 0) {
+			keys.splice(keys.indexOf(task.queue.keys['']+task.id),1);
+			
+			if (keys.length > 0)  {
 				var taskInst = undefined;
 				var getTaskList = new Promise((resolve, reject) => {
 					keys.forEach(async (key, i, array) => {
@@ -40,7 +30,7 @@ const closePendingTasks = (task, outcome,tenant) => {
 							taskInst.data.updated = Date.now();
 							await taskInst.update(taskInst.data);
 						}
-						if (i === array.length - 1) resolve(keys);
+						if (i === array.length -1) resolve(keys);
 					})
 				})
 			}
@@ -48,16 +38,12 @@ const closePendingTasks = (task, outcome,tenant) => {
 }
 
 const resume = (task, outcome) => {
-	return new Promise(async function (resolve, reject) {
-
-		const TASK_QUEUE = 'TASK@' + getEnv(job.data.tenant);
-		const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
-		const jobId = task.data.instanceId;
-
+	return new Promise(async function(resolve, reject) {
+		const jobId = task.data.instanceId
 		const job = await flowQueue.getJob(jobId); //get workflow instance by instance id
 		if (job.data.hasOwnProperty('current_branch') && job.data.current_branch.length > 0) job.data.definition.actions = [].concat(job.data.current_branch, job.data.definition.actions);
 		console.log(job.data.definition.actions)
-		const jobData = { ...job.data };
+		const jobData = {...job.data};
 		console.log(jobId, job.data.state)
 		if (job.data.state !== "Paused") {
 			console.log("Only a paused job could be resumed");
@@ -71,13 +57,13 @@ const resume = (task, outcome) => {
 			// All = all must agreed on a decision to complete, or it will be rejected
 			*/
 			var taskGroupNumber = task.id.match(/(?<=\-).+?(?=\-)/);
-			if (task.data.criteria != "Anyone") {
+			if (task.data.criteria!="Anyone") {  
 				redisqueries.allkeys(`bull:${TASK_QUEUE}:*-${taskGroupNumber}-*`)
 					.then(async keys => {
-						console.log(keys, task.queue.keys[''] + task.id)
+						console.log(keys, task.queue.keys['']+task.id)
 						console.log(`TASKQ 1. Total task/assignee: ${keys.length}, Task group: ${taskGroupNumber}`)
-						keys.splice(keys.indexOf(task.queue.keys[''] + task.id), 1);
-						if (keys.length > 0) {
+						keys.splice(keys.indexOf(task.queue.keys['']+task.id),1);
+						if (keys.length > 0)  {
 							const taskList = [];
 							var taskInst = undefined;
 							var getTaskList = new Promise((resolve, reject) => {
@@ -86,7 +72,7 @@ const resume = (task, outcome) => {
 									taskInst = await taskQueue.getJob(key.match(/([^:]+$)/)[0]); //substring after the last colon (i.e. :)
 									taskInst && console.log("TASKQ 1. Task Inst:", taskInst.data.response);
 									taskInst && taskList.push(taskInst.data.response);
-									if (i === array.length - 1) resolve(taskList);
+									if (i === array.length -1) resolve(taskList);
 								})
 							})
 
@@ -99,27 +85,27 @@ const resume = (task, outcome) => {
 								var disagreed = tl.filter(x => x == "rejected").length;
 								var other = tl.filter(x => x.match(/^(approved|rejected)$/)).length;
 								var allAgreed = agreed === tl.length;
-								var all = allEqual ? tl[0] : "rejected";
-								console.log("TASKQ 1. taskList:", tl, "length:", tl.length, "all equals?", allEqual, allEqual ? tl[0] : "", "Majority:", majority, "All:", all)
+								var all = allEqual? tl[0] : "rejected";
+								console.log("TASKQ 1. taskList:", tl, "length:", tl.length,"all equals?", allEqual, allEqual? tl[0]: "", "Majority:", majority, "All:", all)
 
 								var outcomeByCriteria = ""
 								if (task.data.criteria == "Majority") {
 									outcomeByCriteria = majority;
 								} else if (task.data.criteria == "All") {
-									outcomeByCriteria = tl.includes("") ? "" : all;
+									outcomeByCriteria = tl.includes("")? "" : all;
 								}
 
 								if (outcomeByCriteria == "none") {
-									resolve({ resumed: false, message: `${outcome}, pending completion criteria!` })
+									resolve({resumed: false, message: `${outcome}, pending completion criteria!`})
 								} else {
 									// Criteria fulfilled, resume workflow...
 									jobData.definition.actions[0].configuration.properties.outcome = outcomeByCriteria;
 									jobData.outcome = outcomeByCriteria;
 									flowQueue.getJobLogs(jobId)
 										.then(logs => {
-											const jobLogs = { ...logs }
+											const jobLogs = {...logs}
 											job.remove();
-											flowQueue.add(jobData, { jobId: jobId })
+											flowQueue.add(jobData, {jobId: jobId})
 												.then(resumedJob => {
 													jobLogs.logs.forEach(log => {
 														resumedJob.log(log);
@@ -128,7 +114,7 @@ const resume = (task, outcome) => {
 												.then(resumedJob => {
 													//res.send(resumedJob)
 													console.log(`TASKQ 1. Job ${jobId} resumed`)
-													resolve({ resumed: true, message: `Workflow instance ${jobId} resumed as "${outcomeByCriteria}"` })
+													resolve({resumed: true, message: `Workflow instance ${jobId} resumed as "${outcomeByCriteria}"`})
 												})
 										}).catch(err => {
 											reject(err)
@@ -141,9 +127,9 @@ const resume = (task, outcome) => {
 							jobData.outcome = outcome;
 							flowQueue.getJobLogs(jobId)
 								.then(logs => {
-									const jobLogs = { ...logs }
+									const jobLogs = {...logs}
 									job.remove();
-									flowQueue.add(jobData, { jobId: jobId })
+									flowQueue.add(jobData, {jobId: jobId})
 										.then(resumedJob => {
 											jobLogs.logs.forEach(log => {
 												resumedJob.log(log);
@@ -152,7 +138,7 @@ const resume = (task, outcome) => {
 										.then(resumedJob => {
 											//res.send(resumedJob)
 											console.log(`Job ${jobId} resumed`)
-											resolve({ resumed: true, message: `Workflow instance ${jobId} resumed as "${outcome}"` })
+											resolve({resumed: true, message: `Workflow instance ${jobId} resumed as "${outcome}"`})
 										})
 								}).catch(err => {
 									reject(err)
@@ -168,9 +154,9 @@ const resume = (task, outcome) => {
 				jobData.outcome = outcome;
 				flowQueue.getJobLogs(jobId)
 					.then(logs => {
-						const jobLogs = { ...logs }
+						const jobLogs = {...logs}
 						job.remove();
-						flowQueue.add(jobData, { jobId: jobId })
+						flowQueue.add(jobData, {jobId: jobId})
 							.then(resumedJob => {
 								jobLogs.logs.forEach(log => {
 									resumedJob.log(log);
@@ -179,7 +165,7 @@ const resume = (task, outcome) => {
 							.then(resumedJob => {
 								//res.send(resumedJob)
 								console.log(`Job ${jobId} resumed`)
-								resolve({ resumed: true, message: `Workflow instance ${jobId} resumed as "${outcome}"` })
+								resolve({resumed: true, message: `Workflow instance ${jobId} resumed as "${outcome}"`})
 							})
 					}).catch(err => {
 						reject(err)
@@ -197,31 +183,31 @@ const resume = (task, outcome) => {
 
 const majWithKKalgorithm = (nums) => {
 	let count = {};
-
+  
 	for (let elem of nums) { count[elem] = count[elem] ? count[elem] + 1 : 1 }
-
+	
 	let candidates = Object.keys(count)
-	let votes = candidates.map(k => { return count[k] })
+	let votes = candidates.map(k => { return count[k]})
 	console.log("candidates:", candidates, "votes:", votes)
-
+	
 	let max = Math.max(...votes)  //highest votes
 	//let maxCount = votes.map(v => v == max? 1 : 0).reduce((a,b) => a+b, 0)
 	//console.log(`highest=${max}, occurs: ${maxCount} times`)
-
+	
 	console.log("Total candidates:", candidates.length)
 	console.log("Uncountered votes:", count[""])
 	console.log("Highest vote:", max)
 	console.log("Total votes:", nums.length - count[""])
-
-	var winners = candidates.filter(key => { return count[key] === max })
+	
+	var winners = candidates.filter(key => {return count[key] === max})
 	console.log("winners:", winners)
-
-	let theWinner = (winners.length == 1) && (nums.length - max < max) && (winners[0] != "") ? winners[0] : count[""] == null ? "rejected" : (nums.length - count["rejected"] <= count["rejected"]) ? "rejected" : "none"
-
+	
+	let theWinner = (winners.length == 1) && (nums.length - max < max) && (winners[0] != "") ? winners[0] : count[""] == null ? "rejected": (nums.length - count["rejected"] <= count["rejected"])? "rejected" : "none" 
+  
 	return theWinner;
 }
 
 module.exports = {
-	closePendingTasks: closePendingTasks,
-	resume: resume
+    closePendingTasks : closePendingTasks,
+    resume : resume
 }

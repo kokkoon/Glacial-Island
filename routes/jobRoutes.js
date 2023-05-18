@@ -2,33 +2,43 @@ const { promisify } = require('util');
 const bodyParser = require("body-parser");
 const URL = require('url');
 const keys = require('../config/keys');
+const NODE_ENV = process.env.NODE_ENV || "local";
 const Bull = require("bull");
-const redis = require('redis');
-
-const MessagingResponse = require('twilio').twiml.MessagingResponse;
+const FLOW_QUEUE = 'FLOW@' + NODE_ENV;
+const LOGS_QUEUE = 'Logs@' + NODE_ENV;
+const TASK_QUEUE = 'TASK@' + NODE_ENV;
+const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
+const flowQueue = new Bull(FLOW_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const logQueue = new Bull(LOGS_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const taskQueue = new Bull(TASK_QUEUE, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const Auth = require("../services/authentication");
 const sample_flow_definition = require('../config/wf-definition-example.json');
+const MessagingResponse = require('twilio').twiml.MessagingResponse;
+const redis = require('redis');
+const async = require('async');
 const redisqueries = require('../services/redisqueries');
 const taskqueries = require('../services/taskqueries');
-
-
+const { doesNotMatch } = require('assert');
 const accountSid = keys.twilioAccountSid;
 const authToken = keys.twilioAuthToken;
 const client = require('twilio')(accountSid, authToken);
 
-const getEnv = (tenant) => {
-	let result = ""
-	if (tenant.search("-dev") >= 0) {
-		result = `studio.${tenant}`
-	} else {
-		result = `production.${tenant}`
-	}
-	return result
-}
 
 module.exports = app => {
 	app.use(bodyParser.urlencoded({ extended: false }));
 	app.use(bodyParser.json());
+
+	app.get('/allkeys/:id', async function (req, res) {
+		console.log(req.params.id)
+		redisqueries.allkeys(`bull:${FLOW_QUEUE}:${req.params.id}*`)
+			.then(keys => {
+				res.json({ "status": true, "message": keys, "status_code": 200 })
+			})
+			.catch(alert => {
+				res.json({ "status": false, "message": alert.message, "status_code": 401 })
+			})
+	})
 
 	app.get('/allIds', async function (req, res) {
 		redisqueries.allIds(resData => {
@@ -43,12 +53,11 @@ module.exports = app => {
 	})
 
 	app.post('/orchestration', Auth.Authenticate, async function (req, res) {
-		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
-		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
+		console.log(req.headers)
 		const url = URL.parse(req.url, true)
 		const mode = url.query.mode;
 		const jobDefinition = (mode && mode === "test") ? sample_flow_definition : req.body;
-		redisqueries.instanceNumber(`bull:${QUEUE_NAME}:id`)
+		redisqueries.instanceNumber(`bull:${FLOW_QUEUE}:id`)
 			.then(uniqueId => {
 				console.log(uniqueId);
 				const JobOpts = {
@@ -72,14 +81,12 @@ module.exports = app => {
 					})
 			})
 			.catch(alert => {
-				console.log(alert);
 				res.json({ "status": false, "message": alert.message, "status_code": 401 })
 			})
 	})
 
 	app.get('/orchestration/:id', Auth.Authenticate, function (req, res) {
-		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
-		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
+		console.log(req.params.id)
 		flowQueue.getJob(req.params.id)
 			.then(job => {
 				console.log("result:", job)
@@ -102,8 +109,6 @@ module.exports = app => {
 	})
 
 	app.get('/logs/:jobId', Auth.Authenticate, function (req, res) {
-		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
-		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 		const jobId = req.params.jobId;
 		const url = URL.parse(req.url, true);
 		const start = url.query.start ? url.query.start : 0;
@@ -123,8 +128,6 @@ module.exports = app => {
 	})
 
 	app.post('/resumejob/:jobId/:outcome', Auth.Authenticate, async function (req, res) {
-		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
-		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
 		const jobId = req.params.jobId;
 		const job = await flowQueue.getJob(jobId);
 		if (job.data.state !== "Paused") {
@@ -155,15 +158,14 @@ module.exports = app => {
 
 	app.get('/instances/:flowId', Auth.Authenticate, function (req, res) {
 		const flowId = req.params.flowId;
-		const QUEUE_NAME = 'FLOW@' + getEnv(req.headers.tenant);
-		const flowQueue = new Bull(QUEUE_NAME, keys.redisURL);
-		redisqueries.allkeys(`bull:${QUEUE_NAME}:${flowId}-*[^s]`)
+
+		redisqueries.allkeys(`bull:${FLOW_QUEUE}:${flowId}-*[^s]`)
 			.then(async keys => {
 				//console.log(keys);
 				const instList = []
 				var inst = {}
 				var getJobList = new Promise((resolve, reject) => {
-					strRegex = new RegExp(`bull\\:${QUEUE_NAME}\\:(.*)`);
+					strRegex = new RegExp(`bull\\:${FLOW_QUEUE}\\:(.*)`);
 					keys.forEach(async (key, i, array) => {
 						//console.log(key, i)
 						//if (!key.endsWith(":logs")) {
@@ -199,7 +201,15 @@ module.exports = app => {
 
 	app.get('/task/:id', function (req, res) {
 		const id = req.params.id;
-		console.log("Retriving task:", id);
+		console.log("Retriving task:", id);/*
+	var task = await taskQueue.getJob(id); 
+		.then(task => {
+			console.log(`Found task id: ${id}`, task)
+			res.status(200).send(task)
+		}).catch(err => {
+			console.log(`Error retrieving task...${err}`)
+			res.status(501).send({status: 501, error: err})
+		}) */
 		taskQueue.getJob(id)
 			.then(task => {
 				console.log(`Found task id: ${id}`, task)
@@ -207,12 +217,14 @@ module.exports = app => {
 			}).catch(err => {
 				console.log(`Error retrieving task...${err}`)
 				res.status(501).send({ status: 501, error: err })
-			});
+			})
+		//console.log(`task id: ${id}`, task)
+		//res.status(200).send(task)
 	})
 
 	app.get('/tasks', function (req, res) {
-		const TASK_QUEUE = 'TASK@' + getEnv(req.headers.tenant);
 		var owner = req.headers.owner ? req.headers.owner : "";
+		console.log("owner", owner)
 		var getKeys = new Promise(async (resolve, reject) => {
 			var keys = [];
 			var keylist = undefined
@@ -259,8 +271,6 @@ module.exports = app => {
 	})
 
 	app.patch('/task/:id/:outcome', Auth.Authenticate, async function (req, res) {
-		const TASK_QUEUE = 'TASK@' +  getEnv(req.headers.tenant);
-		const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
 		const id = req.params.id;
 		var outcome = req.params.outcome;
 		var taskInst = undefined;
@@ -269,11 +279,11 @@ module.exports = app => {
 		outcome = outcome.match(/App/i) ? 'approved' : outcome.match(/Rej/i) ? 'rejected' : outcome;
 		console.log("User's response:", outcome)
 
-		taskqueries.resume(taskInst, outcome, 'portal')
+		taskqueries.resume(taskInst, outcome)
 			.then(async ans => {
 				if (ans.resumed) {
 					// completion criteria met, update other tasks...
-					taskqueries.closePendingTasks(taskInst, outcome, 'portal')
+					taskqueries.closePendingTasks(taskInst, outcome)
 				}
 				console.log("Resumed message:", ans)
 				taskInst.data.status = "Completed";
@@ -287,23 +297,20 @@ module.exports = app => {
 			})
 	})
 
-	app.patch('/externaltask/:id/:outcome/:tenant?', async function (req, res) {
-		const TASK_QUEUE = 'TASK@' +  getEnv(req.headers.tenant);
-		const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
+	app.patch('/externaltask/:id/:outcome', async function (req, res) {
 		const id = req.params.id;
 		var outcome = req.params.outcome;
-		var tenant = req.params.tenant;
 		var taskInst = undefined;
 		console.log("Retriving task:", id, " outcome:", outcome);
 		taskInst = await taskQueue.getJob(id);
 		outcome = outcome.match(/App/i) ? 'approved' : outcome.match(/Rej/i) ? 'rejected' : outcome;
 		console.log("User's response:", outcome)
 
-		taskqueries.resume(taskInst, outcome, 'portal')
+		taskqueries.resume(taskInst, outcome)
 			.then(async ans => {
 				if (ans.resumed) {
 					// completion criteria met, update other tasks...
-					taskqueries.closePendingTasks(taskInst, outcome, 'portal')
+					taskqueries.closePendingTasks(taskInst, outcome)
 				}
 				console.log("Resumed message:", ans)
 				taskInst.data.status = "Completed";
@@ -412,7 +419,7 @@ module.exports = app => {
 								console.log(`1. Resumed: ${ans.resumed}, message: ${ans.message}`);
 								if (ans.resumed) {
 									// completion criteria met, update other tasks...
-									taskqueries.closePendingTasks(waitingJob[0], outcome, 'portal')
+									taskqueries.closePendingTasks(waitingJob[0], outcome)
 								}
 
 								waitingJob[0].data.status = "Completed";
@@ -446,7 +453,6 @@ module.exports = app => {
 
 		//console.log("SESSION: ", req.session)
 		//res.set('Content-Type', 'text/xml')
-	});
-
+	})
 
 }

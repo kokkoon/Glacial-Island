@@ -1,14 +1,23 @@
 
 const JSONPath = require('jsonpath');
+const jsonLogic = require('json-logic-js');
+const Bull = require('bull');
 const moment = require('moment');
 const twilio = require('twilio');
+const math = require('mathjs');
 const { nanoid } = require('nanoid');
 const replaceall = require("replaceall");
 const request = require("request-promise");
+const ejs = require('ejs');
 const jp = JSONPath;
-
 //ENV config
 const keys = require('../config/keys');
+
+//ENV NODE_ENV
+const NODE_ENV = process.env.NODE_ENV || "local";
+const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
+const msgQueue = new Bull(MSG_QUEUE, keys.redisURL);
+console.log('connect', keys.redisURL);
 
 //ENV redisqueries
 const redisqueries = require('../services/redisqueries');
@@ -21,17 +30,8 @@ const S = require('string');
 const accountSid = keys.twilioAccountSid;
 const authToken = keys.twilioAuthToken;
 
-const getEnv = (tenant) => {
-    let result = ""
-    if (tenant.search("-dev") >= 0) {
-        result = `studio.${tenant}`
-    } else {
-        result = `production.${tenant}`
-    }
-    return result
-}
 
-const startExcution = async (job, variables, actions, intialExcution, tenant) => {
+const startExcution = async (job, variables, actions, intialExcution) => {
     return new Promise(async (resolve, reject) => {
         try {
             let varVault = intialExcution ? {} : variables, edges = actions.edges, nodes = actions.nodes;
@@ -44,8 +44,6 @@ const startExcution = async (job, variables, actions, intialExcution, tenant) =>
                 });
             }
 
-            console.log(varVault);
-
             let actionLists = JSON.parse(JSON.stringify(actions));
 
             while (actionLists.length > 0) {
@@ -56,7 +54,7 @@ const startExcution = async (job, variables, actions, intialExcution, tenant) =>
                 console.log(actions.length, JSON.stringify(logObj))
                 job.log(JSON.stringify(logObj))
                 var j = job.data.state;
-                var resData = await callAction(job, varVault, action, actionLists, actionStatus, tenant);
+                var resData = await callAction(job, varVault, action, actionLists, actionStatus);
                 varVault = resData.varVault;
                 actionLists = resData.actionLists
                 job = resData.job;
@@ -77,7 +75,7 @@ const startExcution = async (job, variables, actions, intialExcution, tenant) =>
 }
 
 //Action Lists 
-const callAction = (job, varVault, action, actionLists, actionStatus, tenant) => {
+const callAction = (job, varVault, action, actionLists, actionStatus) => {
     return new Promise(async (resolve, reject) => {
         try {
             switch (action.configuration.nodeType) {
@@ -110,7 +108,7 @@ const callAction = (job, varVault, action, actionLists, actionStatus, tenant) =>
                     }
                     break
                 case "Loop":
-                    const reqLoopData = await loopFunction(job, varVault, action, actionLists, tenant);
+                    const reqLoopData = await loopFunction(job, varVault, action, actionLists);
                     actionStatus = job.data.state;
                     break
                 case "Condition":
@@ -120,7 +118,7 @@ const callAction = (job, varVault, action, actionLists, actionStatus, tenant) =>
                     break
                 case "Assign Task":
                     //For Testing
-                    const reqAssignTaskData = await callAssignTask(job, varVault, action, actionLists, tenant);
+                    const reqAssignTaskData = await callAssignTask(job, varVault, action, actionLists);
                     job = reqAssignTaskData.job;
                     actionLists = reqAssignTaskData.actions;
                     actionStatus = reqAssignTaskData.actionStatus;
@@ -150,11 +148,10 @@ const callAction = (job, varVault, action, actionLists, actionStatus, tenant) =>
     })
 }
 
-const callAssignTask = (job, varVault, action, actions, actionStatus, tenant) => {
+const callAssignTask = (job, varVault, action, actions, actionStatus) => {
     return new Promise(async (resolve, reject) => {
         try {
-            const MSG_QUEUE = 'MESSENGER@' + getEnv(tenant);
-            const msgQueue = new Bull(MSG_QUEUE, keys.redisURL);
+            debugger
             let properties = (action && action.configuration) ? action.configuration.properties : "";
             if (properties) {
                 properties['nodeType'] = action.nodeType;
@@ -218,7 +215,7 @@ const callAssignTask = (job, varVault, action, actions, actionStatus, tenant) =>
                     }
                     job.data.current_branch = branchActions;
                     job.update(job.data);
-                    const resdata = await startExcution(job, varVault, branchActions, tenant);
+                    const resdata = await startExcution(job, varVault, branchActions);
                     actionStatus = "Active"
                 }
 
@@ -276,7 +273,7 @@ const callCondition = (job, varVault, action, mainAction) => {
                 var j = job.data.state;
 
                 console.log(j);
-                await startExcution(job, varVault, branchActions, tenant);
+                await startExcution(job, varVault, branchActions);
                 job.data.state = "Active";
                 resolve({ job })
             } else {
@@ -288,7 +285,7 @@ const callCondition = (job, varVault, action, mainAction) => {
     });
 }
 
-const loopFunction = async (job, varVault, action, mainAction, tenant) => {
+const loopFunction = async (job, varVault, action, mainAction) => {
     const properties = (action && action.configuration) ? action.configuration.properties : "";
     if (properties) {
         try {
@@ -314,7 +311,7 @@ const loopFunction = async (job, varVault, action, mainAction, tenant) => {
                 }
 
                 let loopActions = JSON.parse(JSON.stringify(action.branches[0].actions));
-                const resdata = await startExcution(job, varVault, loopActions, tenant);
+                const resdata = await startExcution(job, varVault, loopActions);
                 count++
             }
             job.data.state = "Active";
@@ -438,14 +435,21 @@ const replaceVariables = (action, varVault, isString) => {
 
 const replaceVariablesString = (action, varVault, isString) => {
     try {
-        var gv = [], s, string = isString ? action : JSON.stringify(action);
-        const regex = /\{{([0-9a-zA-Z-_., \/\']+)\}}/gm;
-        while ((s = regex.exec(string)) !== null) {
-            if (s.index === regex.lastIndex) {
-                regex.lastIndex++;
+        console.log("=================");
+        var gv = [], s, string = isString ? action : JSON.stringify(action), match;
+        // const regex = /\{{([0-9a-zA-Z-_., \/\']+)\}}/gm;
+        // while ((s = regex.exec(string)) !== null) {
+        //     if (s.index === regex.lastIndex) {
+        //         regex.lastIndex++;
+        //     }
+        //     gv.push(s[0]);
+        // }
+
+        const regex = /{{([^{}[\]]*?(?:(?:\[[^\]]*\])[^{}[\]]*?)*)}}/g;
+            while (match = regex.exec(string)) {
+                console.log(match[1]);
+                gv.push(`{{${match[1]}}}`);
             }
-            gv.push(s[0]);
-        }
 
         for (let index = 0; index < gv.length; index++) {
             const objectKey = gv[index];
@@ -665,10 +669,12 @@ const callCollectionOperation = (varVault, actionData, job) => {
                     action.filters = ObjFilter;
                 }
 
+
                 //Variable To Orignal Value 
                 if (action.fetchRecordField && action.fetchRecordValue) {
-                    action.fetchRecordValue = await replaceVariableFunction(action.fetchRecordValue, varVault, null);
+                    action.fetchRecordValue = await replaceVariablesString(action.fetchRecordValue, varVault, true);
                 }
+
 
                 if (action.reqBody) {
                     action.reqBody = await bodyreplaceVariables(action.reqBody, varVault, true);
@@ -717,24 +723,55 @@ const ejsRenderJson = (value, varVault) => {
     return JSONData;
 }
 
-const callWebService = async (actionDef, varVault, job) => {
+const callWebService = async (actionData, varVault, job) => {
     try {
-        const url = actionDef.apiUrl
-        const method = actionDef.reqMethod;
-        const headers = actionDef.reqHeaders;
-        const body = actionDef.reqBody;
+        let action = (actionData && actionData.configuration) ? actionData.configuration.properties : "";
+
+        // const url = action.apiUrl
+        // const method = actionDef.reqMethod;
+        // const headers = actionDef.reqHeaders;
+        // const body = actionDef.reqBody;
+
+        let requestUrl = await replaceVariables(action.apiUrl, varVault, true);
+        let requestHearder = await replaceVariables(action.reqHeaders, varVault, true);
+        let requestBody = await bodyreplaceVariables(action.reqBody, varVault, true);
+
+
+        var reqDatas = {
+            "url": requestUrl,
+            "connId": action.connId,
+            "dataSrcType": action.type,
+            "tenant": action.tenant,
+            "method": action.reqMethod,
+            "reqHeaders": requestHearder,
+            "isRequestHeaders": action.isRequestHeaders,
+            "reqBody": requestBody,
+            "isRequestBody": requestBody,
+            "contentType": action.contentType
+        }
+
+        console.log(reqDatas);
+
+        const replaceVariablesData = reqDatas
+        const url = replaceVariablesData.url ? replaceVariablesData.url : undefined;
+        const method = replaceVariablesData.method;
+        const headers = replaceVariablesData.reqHeaders;
+        const body = replaceVariablesData.reqBody;
+
 
         var options = {}
         options.method = method;
         options.url = url;
-        options.headers = headers;
-        method !== 'GET' ? options.body = body : null;
-        //options.body = body;
+        options.headers = (headers != "" && headers) ? JSON.parse(headers) : {};
+        method !== 'GET' ? options.body = (isJSON(body) ? JSON.parse(body) : body) : null;
         options.json = true;
+
+        console.log(options);
         const resWebrequest = await request(options);
-        varVault[actionDef.variable] = JSON.stringify(resWebrequest);
+        varVault[action.variable] = JSON.stringify(resWebrequest);
         return { job, varVault }
     } catch (err) {
+        console.log(err);
         return { job, varVault }
     }
 }
