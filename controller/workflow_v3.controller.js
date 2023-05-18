@@ -1,23 +1,14 @@
 
 const JSONPath = require('jsonpath');
-const jsonLogic = require('json-logic-js');
-const Bull = require('bull');
 const moment = require('moment');
 const twilio = require('twilio');
-const math = require('mathjs');
 const { nanoid } = require('nanoid');
 const replaceall = require("replaceall");
 const request = require("request-promise");
-const ejs = require('ejs');
 const jp = JSONPath;
+
 //ENV config
 const keys = require('../config/keys');
-
-//ENV NODE_ENV
-const NODE_ENV = process.env.NODE_ENV || "local";
-const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
-const msgQueue = new Bull(MSG_QUEUE, keys.redisURL);
-console.log('connect', keys.redisURL);
 
 //ENV redisqueries
 const redisqueries = require('../services/redisqueries');
@@ -30,8 +21,17 @@ const S = require('string');
 const accountSid = keys.twilioAccountSid;
 const authToken = keys.twilioAuthToken;
 
+const getEnv = (tenant) => {
+    let result = ""
+    if (tenant.search("-dev") >= 0) {
+        result = `studio.${tenant}`
+    } else {
+        result = `production.${tenant}`
+    }
+    return result
+}
 
-const startExcution = async (job, variables, actions, intialExcution) => {
+const startExcution = async (job, variables, actions, intialExcution, tenant) => {
     return new Promise(async (resolve, reject) => {
         try {
             let varVault = intialExcution ? {} : variables, edges = actions.edges, nodes = actions.nodes;
@@ -54,7 +54,7 @@ const startExcution = async (job, variables, actions, intialExcution) => {
                 console.log(actions.length, JSON.stringify(logObj))
                 job.log(JSON.stringify(logObj))
                 var j = job.data.state;
-                var resData = await callAction(job, varVault, action, actionLists, actionStatus);
+                var resData = await callAction(job, varVault, action, actionLists, actionStatus, tenant);
                 varVault = resData.varVault;
                 actionLists = resData.actionLists
                 job = resData.job;
@@ -75,7 +75,7 @@ const startExcution = async (job, variables, actions, intialExcution) => {
 }
 
 //Action Lists 
-const callAction = (job, varVault, action, actionLists, actionStatus) => {
+const callAction = (job, varVault, action, actionLists, actionStatus, tenant) => {
     return new Promise(async (resolve, reject) => {
         try {
             switch (action.configuration.nodeType) {
@@ -108,7 +108,7 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                     }
                     break
                 case "Loop":
-                    const reqLoopData = await loopFunction(job, varVault, action, actionLists);
+                    const reqLoopData = await loopFunction(job, varVault, action, actionLists, tenant);
                     actionStatus = job.data.state;
                     break
                 case "Condition":
@@ -118,7 +118,7 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                     break
                 case "Assign Task":
                     //For Testing
-                    const reqAssignTaskData = await callAssignTask(job, varVault, action, actionLists);
+                    const reqAssignTaskData = await callAssignTask(job, varVault, action, actionLists, tenant);
                     job = reqAssignTaskData.job;
                     actionLists = reqAssignTaskData.actions;
                     actionStatus = reqAssignTaskData.actionStatus;
@@ -148,10 +148,11 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
     })
 }
 
-const callAssignTask = (job, varVault, action, actions, actionStatus) => {
+const callAssignTask = (job, varVault, action, actions, actionStatus, tenant) => {
     return new Promise(async (resolve, reject) => {
         try {
-            debugger
+            const MSG_QUEUE = 'MESSENGER@' + getEnv(tenant);
+            const msgQueue = new Bull(MSG_QUEUE, keys.redisURL);
             let properties = (action && action.configuration) ? action.configuration.properties : "";
             if (properties) {
                 properties['nodeType'] = action.nodeType;
@@ -215,7 +216,7 @@ const callAssignTask = (job, varVault, action, actions, actionStatus) => {
                     }
                     job.data.current_branch = branchActions;
                     job.update(job.data);
-                    const resdata = await startExcution(job, varVault, branchActions);
+                    const resdata = await startExcution(job, varVault, branchActions, tenant);
                     actionStatus = "Active"
                 }
 
@@ -273,7 +274,7 @@ const callCondition = (job, varVault, action, mainAction) => {
                 var j = job.data.state;
 
                 console.log(j);
-                await startExcution(job, varVault, branchActions);
+                await startExcution(job, varVault, branchActions, tenant);
                 job.data.state = "Active";
                 resolve({ job })
             } else {
@@ -285,7 +286,7 @@ const callCondition = (job, varVault, action, mainAction) => {
     });
 }
 
-const loopFunction = async (job, varVault, action, mainAction) => {
+const loopFunction = async (job, varVault, action, mainAction, tenant) => {
     const properties = (action && action.configuration) ? action.configuration.properties : "";
     if (properties) {
         try {
@@ -311,7 +312,7 @@ const loopFunction = async (job, varVault, action, mainAction) => {
                 }
 
                 let loopActions = JSON.parse(JSON.stringify(action.branches[0].actions));
-                const resdata = await startExcution(job, varVault, loopActions);
+                const resdata = await startExcution(job, varVault, loopActions, tenant);
                 count++
             }
             job.data.state = "Active";
@@ -435,16 +436,7 @@ const replaceVariables = (action, varVault, isString) => {
 
 const replaceVariablesString = (action, varVault, isString) => {
     try {
-        console.log("=================");
         var gv = [], s, string = isString ? action : JSON.stringify(action), match;
-        // const regex = /\{{([0-9a-zA-Z-_., \/\']+)\}}/gm;
-        // while ((s = regex.exec(string)) !== null) {
-        //     if (s.index === regex.lastIndex) {
-        //         regex.lastIndex++;
-        //     }
-        //     gv.push(s[0]);
-        // }
-
         const regex = /{{([^{}[\]]*?(?:(?:\[[^\]]*\])[^{}[\]]*?)*)}}/g;
             while (match = regex.exec(string)) {
                 console.log(match[1]);
