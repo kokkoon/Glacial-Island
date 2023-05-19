@@ -685,6 +685,8 @@ const callCollectionOperation = (varVault, actionData, job) => {
                     ...action
                 }
 
+                requestData["tenant"] = job?.data?.tenant || requestData["tenant"]
+
                 var options = {
                     method: 'POST',
                     url: `${keys.PortalHost}/callCollectionOperation/endpoint`,

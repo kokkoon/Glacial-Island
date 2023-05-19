@@ -1,7 +1,7 @@
 //const throng = require('throng');
 const Bull = require('bull');
 const keys = require('./config/keys');
-const FLOW_QUEUE = 'WORKERFLOW';
+const FLOW_QUEUE = 'WORKFLOW';
 const orchestrator = require('./services/orchestrator');
 const moment = require('moment');
 

@@ -39,7 +39,7 @@ const dashboard = GUI({
 	Bull,
 	queues: [
 		{
-			name: "WORKERFLOW",
+			name: "WORKFLOW",
 			hostId: "flow",
 			url: keys.redisURL
 		},
