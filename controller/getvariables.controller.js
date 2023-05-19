@@ -87,7 +87,7 @@ const loadExrVariable = async (reqPayload) => {
 
                     var options = {
                         method: 'POST',
-                        url: `${keys.PortalHost}/webRequestCollection/worflow`,
+                        url: `${keys.PortalDevHost}/webRequestCollection/worflow`,
                         body: reqData,
                         json: true
                     };
@@ -116,7 +116,7 @@ const loadExrVariable = async (reqPayload) => {
 
                 var options = {
                     method: 'POST',
-                    url: `${keys.PortalHost}/webRequestCollection/worflow`,
+                    url: `${keys.PortalDevHost}/webRequestCollection/worflow`,
                     body: reqData,
                     json: true
                 };
@@ -136,7 +136,7 @@ const loadExrVariable = async (reqPayload) => {
 
                 var options = {
                     method: 'POST',
-                    url: `${keys.PortalHost}/webRequestCollection/worflow`,
+                    url: `${keys.PortalDevHost}/webRequestCollection/worflow`,
                     body: reqData,
                     json: true
                 };
@@ -163,7 +163,7 @@ const loadExrVariable = async (reqPayload) => {
 
                 var options = {
                     method: 'POST',
-                    url: `${keys.PortalHost}/webrequest`,
+                    url: `${keys.PortalDevHost}/webrequest`,
                     body: reqData,
                     json: true
                 };

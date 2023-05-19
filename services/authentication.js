@@ -7,7 +7,7 @@ const Authenticate = async (req, res, next) => {
         const authorization = { authorization: req.headers.authorization, tenant: req.headers.tenant };
         const requestOptions = {
             method: 'GET',
-            uri: `${keys.PortalHost}/VerifyAuthorizationToken`,
+            uri: `${keys.PortalDevHost}/VerifyAuthorizationToken`,
             headers: {
                 'Content-Type': 'application/json',
                 'authorization': req.headers.authorization,

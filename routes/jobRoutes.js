@@ -182,7 +182,7 @@ module.exports = app => {
 					if (instList.length > 0) {
 						let lists = instList.sort(function (a, b) {
 							return new Date(b.timestamp) - new Date(a.timestamp);
-						});
+						}).filter(x => x.data.tenant == req.headers.tenant);
 						res.status(200).json({ "status": true, "data": lists })
 					} else {
 						res.json({ "status": false, "data": [], "status_code": 401 })

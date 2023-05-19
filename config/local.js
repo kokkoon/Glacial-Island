@@ -1,5 +1,6 @@
 module.exports = {
-    PortalHost : 'http://localhost:5000/api',
+    PortalDevHost : 'http://localhost:5000/api',
+    PortalLiveHost : 'http://localhost:5000/api',
     redisURL: 'redis://h:9kcYe9Z2721c@104-238-212-163.cloud-xip.com:6379',
     redisHost: '104-238-212-163.cloud-xip.com',
     redisPort: '6379',

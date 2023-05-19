@@ -1,5 +1,6 @@
 module.exports = {
-    PortalHost : 'https://portal.flowngin.com/api',
+    PortalDevHost : 'https://portal.flowngin.dev/api',
+    PortalLiveHost : 'https://portal.flowngin.com/api',
     //redisURL: 'redis://h:7tqgSUbeIUWEMEVMD0rPs1YFyPP6MgOV@redis-18355.c1.asia-northeast1-1.gce.cloud.redislabs.com:18355',
     redisURL: 'redis://h:9kcYe9Z2721c@104-238-212-163.cloud-xip.com:6379',
     redisHost: '104-238-212-163.cloud-xip.com',

@@ -689,7 +689,7 @@ const callCollectionOperation = (varVault, actionData, job) => {
 
                 var options = {
                     method: 'POST',
-                    url: `${keys.PortalHost}/callCollectionOperation/endpoint`,
+                    url: `${keys.PortalDevHost}/callCollectionOperation/endpoint`,
                     body: requestData,
                     json: true
                 };

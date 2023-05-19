@@ -1,5 +1,6 @@
 module.exports = {
-    PortalHost : 'https://portal.glozic.com/api',
+    PortalDevHost : 'https://portal.glozic.dev/api',
+    PortalLiveHost : 'https://portal.glozic.com/api',
     redisURL: 'redis://flowngin:fl0wng1n@redis-91545-0.cloudclusters.net:19996',
     redisHost: 'redis-91545-0.cloudclusters.net',
     redisPort: '19996',
