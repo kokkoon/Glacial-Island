@@ -19,6 +19,7 @@
     "express": "^4.17.1",
     "express-session": "^1.17.1",
     "foreman": "^3.0.1",
+    "hot-formula-parser": "^4.0.0",
     "json-logic-js": "^1.2.2",
     "jsonpath": "^1.0.2",
     "mathjs": "^8.0.0",

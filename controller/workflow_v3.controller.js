@@ -9,6 +9,7 @@ const { nanoid } = require('nanoid');
 const replaceall = require("replaceall");
 const request = require("request-promise");
 const ejs = require('ejs');
+const utility = require("../utils/utility")
 const jp = JSONPath;
 //ENV config
 const keys = require('../config/keys');
@@ -37,8 +38,7 @@ const startExcution = async (job, variables, actions, intialExcution) => {
             let varVault = intialExcution ? {} : variables, edges = actions.edges, nodes = actions.nodes;
             let actionStatus = 'Completed'
             if (intialExcution) {
-                console.log(variables);
-                let variablesData = await getvariables(variables);
+                let variablesData = await getvariables(variables, {}, job);
                 Object.keys(variablesData).forEach(ele => {
                     varVault[ele] = JSON.stringify(variablesData[ele])
                 });
@@ -446,10 +446,10 @@ const replaceVariablesString = (action, varVault, isString) => {
         // }
 
         const regex = /{{([^{}[\]]*?(?:(?:\[[^\]]*\])[^{}[\]]*?)*)}}/g;
-            while (match = regex.exec(string)) {
-                console.log(match[1]);
-                gv.push(`{{${match[1]}}}`);
-            }
+        while (match = regex.exec(string)) {
+            console.log(match[1]);
+            gv.push(`{{${match[1]}}}`);
+        }
 
         for (let index = 0; index < gv.length; index++) {
             const objectKey = gv[index];
@@ -574,7 +574,7 @@ const queryJson = (varVault, action) => {
                 resolve(varVault)
             } catch (err) {
                 console.log(err);
-                Toast("Something went wrong action execution", "error")
+                //Toast("Something went wrong action execution", "error")/
                 resolve(varVault)
             }
         });
@@ -604,13 +604,26 @@ const joblogs = (job, startTime, { message, id, text, nodeType }) => {
 
 const bodyreplaceVariables = (action, varVault, isString, format) => {
     try {
-        var gv = [], s, string = isString ? action : JSON.stringify(action);
+        var gv = [], s, string = isString ? action : JSON.stringify(action), match;
         const regex = /\{{([0-9a-zA-Z-_., \/\']+)\}}/gm;
         while ((s = regex.exec(string)) !== null) {
             if (s.index === regex.lastIndex) {
                 regex.lastIndex++;
             }
             gv.push(s[0]);
+        }
+
+        const regex2 = /{{([^{}[\]]*?(?:(?:\[[^\]]*\])[^{}[\]]*?)*)}}/g;
+        while (match = regex2.exec(string)) {
+            if (!gv.includes(`{{${match[1]}}}`)) {
+                gv.push(`{{${match[1]}}}`);
+            }
+
+        }
+
+        for (let index = 0; index < gv.length; index++) {
+            const objectKey = gv[index];
+            string = string.replace(gv[index], ejsRender(objectKey, varVault))
         }
 
         for (let index = 0; index < gv.length; index++) {
@@ -647,6 +660,15 @@ const bodyreplaceVariables = (action, varVault, isString, format) => {
         return isString ? string : JSON.parse(string)
     }
 
+}
+
+const CheckRequestBody = (body) => {
+    try {
+        let tempBody = JSON.parse(body)
+        return (body && tempBody == "{{request.body}}") ? true : false
+    } catch (err) {
+        return false;
+    }
 }
 
 const callCollectionOperation = (varVault, actionData, job) => {
@@ -689,7 +711,7 @@ const callCollectionOperation = (varVault, actionData, job) => {
 
                 var options = {
                     method: 'POST',
-                    url: `${keys.PortalDevHost}/callCollectionOperation/endpoint`,
+                    url: `${utility.IsCheckDevTenant(requestData["tenant"]) ? keys.PortalDevHost : keys.PortalLiveHost}/callCollectionOperation/endpoint`,
                     body: requestData,
                     json: true
                 };
