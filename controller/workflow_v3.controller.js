@@ -622,11 +622,6 @@ const bodyreplaceVariables = (action, varVault, isString, format) => {
         }
 
         for (let index = 0; index < gv.length; index++) {
-            const objectKey = gv[index];
-            string = string.replace(gv[index], ejsRender(objectKey, varVault))
-        }
-
-        for (let index = 0; index < gv.length; index++) {
             const objectKey = getObjectKey(gv[index], 0);
             if (varVault[objectKey]) {
                 let varData = (JSON.parse(varVault[objectKey]) && JSON.parse(varVault[objectKey]).result) ? JSON.parse(varVault[objectKey]).result : JSON.parse(varVault[objectKey]);
