@@ -48,22 +48,23 @@ const startExcution = async (job, variables, actions, intialExcution) => {
 
             while (actionLists.length > 0) {
                 var action = actionLists.shift();
+                if (action.configuration.isDisabled === false) {
+                    if (!action.hasOwnProperty('actionId')) action.actionId = `${action.number}-${nanoid(6)}`;
+                    var logObj = { timestamp: moment(), actionId: action.actionId, status: "Start", activity: action.configuration.actionTitle, log: `Starts ${action.configuration.actionTitle}` };
+                    console.log(actions.length, JSON.stringify(logObj))
+                    job.log(JSON.stringify(logObj))
+                    var j = job.data.state;
+                    var resData = await callAction(job, varVault, action, actionLists, actionStatus);
+                    varVault = resData.varVault;
+                    actionLists = resData.actionLists
+                    job = resData.job;
 
-                if (!action.hasOwnProperty('actionId')) action.actionId = `${action.number}-${nanoid(6)}`;
-                var logObj = { timestamp: moment(), actionId: action.actionId, status: "Start", activity: action.configuration.actionTitle, log: `Starts ${action.configuration.actionTitle}` };
-                console.log(actions.length, JSON.stringify(logObj))
-                job.log(JSON.stringify(logObj))
-                var j = job.data.state;
-                var resData = await callAction(job, varVault, action, actionLists, actionStatus);
-                varVault = resData.varVault;
-                actionLists = resData.actionLists
-                job = resData.job;
-
-                if (resData.actionStatus == "Paused") {
-                    resolve({ status: resData.actionStatus, actions: actionLists });
-                    break;
+                    if (resData.actionStatus == "Paused") {
+                        resolve({ status: resData.actionStatus, actions: actionLists });
+                        break;
+                    }
+                    actionStatus = resData.actionStatus
                 }
-                actionStatus = resData.actionStatus
             }
             resolve({ status: actionStatus == 'Active' ? 'Completed' : actionStatus, actions: actionLists });
         } catch (err) {
