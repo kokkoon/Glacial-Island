@@ -71,10 +71,22 @@ const loadExrVariable = async (reqPayload) => {
             case 'Json':
                 extData[source.var] = source.defaultValue
                 break;
+            case 'Tenant':
+                extData[source.var] = job?.data?.tenant
+                break;
+            case 'App':
+                extData[source.var] = null
+                break;
+            case 'User':
+                extData[source.var] = null
+                break;
             case 'Object':
                 if (source.var == 'user') {
-                    //  extData[source.var] = props.user.User_data;
-                    extData[source.var] = null;
+                    extData[source.var] = null
+                } else if (source.var == 'app') {
+                    extData[source.var] = null
+                } else if (source.var == 'tenant') {
+                    extData[source.var] = job?.data?.tenant
                 } else if (source.var == 'document') {
                     extData[source.var] = source.value;
                 } else {
