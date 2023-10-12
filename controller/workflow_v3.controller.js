@@ -83,6 +83,10 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                 case "Query Json":
                     varVault = await queryJson(varVault, action);
                     break
+                case "JS Editor":
+                    reqjsEditorData = await jsEditor(varVault, action);
+                    varVault = reqjsEditorData.varVault;
+                    break
                 case "Send Email":
                     const reqEmailData = await sendEmail(job, varVault, action);
                     job = reqEmailData.job;
@@ -569,8 +573,8 @@ const queryJson = (varVault, action) => {
                     var resdata = (typeof JSONData == 'string') ? JSON.parse(JSONData) : JSONData;
                     if (properties.query) {
                         var resdata = await jpQuery((typeof JSONData == 'string') ? JSON.parse(JSONData) : JSONData, properties.query);
+                        varVault[properties.variable] = JSON.stringify(resdata)
                     }
-                    varVault[properties.variable] = resdata;
                 }
                 resolve(varVault)
             } catch (err) {
@@ -796,6 +800,25 @@ const callWebService = async (actionData, varVault, job) => {
     }
 }
 
+const jsEditor = async (varVault, actionData, job) => {
+    try {
+        let action = (actionData && actionData.configuration) ? actionData.configuration.properties : "";
+        let _var = {};
+        Object.keys(varVault).forEach(ele => {
+            _var[ele] = JSON.parse(varVault[ele])
+        });
+        const JsExpressionData = jsFunction(_var,action)
+        varVault[action.variable] = JSON.stringify(JsExpressionData);
+        return { job, varVault }
+    } catch (err) {
+        return { job, varVault }
+    }
+}
+
+function jsFunction(varVault, action) {
+    var dynamicFunction = new Function(`const _var = ${JSON.stringify(varVault)}; ${action.value}`);
+    return dynamicFunction();
+}
 
 module.exports = {
     startExcution: startExcution
