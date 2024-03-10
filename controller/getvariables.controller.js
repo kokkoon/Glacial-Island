@@ -7,6 +7,7 @@ const hotFormula = require("../utils/hotFormula")
 const utility = require("../utils/utility")
 const HotFormulaParser = hotFormula.HotFormulaParser
 const { replaceVariable, togifyTotextvariableFunction, ejsRender } = require('./helper.controller');
+const moment = require("moment")
 
 const getvariables = async (extSources, queryStringObjet, job) => {
     var extData = {}, count = 0;
@@ -46,8 +47,8 @@ const getvariables = async (extSources, queryStringObjet, job) => {
 
 const loadExrVariable = async (reqPayload) => {
     try {
-        let { job, extData, source, propsUser: props, queryStringObjet, InputVariable, ref, extSources, propsVars } = reqPayload;
 
+        let { job, extData, source, propsUser: props, queryStringObjet, InputVariable, ref, extSources, propsVars } = reqPayload;
         if (source.filters && source.filters.length != 0) {
             source.filters.forEach(x => {
                 x.filters.forEach(e2 => {
@@ -61,7 +62,7 @@ const loadExrVariable = async (reqPayload) => {
                     }
                 });
             });
-
+            source.filters = replacePlaceholders(JSON.stringify(source.filters), extData)
             source.filters = await loadFilterDataVariable(reqPayload);
         }
 
@@ -81,9 +82,7 @@ const loadExrVariable = async (reqPayload) => {
                 extData[source.var] = null
                 break;
             case 'Object':
-                if (source.var == 'user') {
-                    extData[source.var] = null
-                } else if (source.var == 'app') {
+                if (source.var == 'app') {
                     extData[source.var] = null
                 } else if (source.var == 'tenant') {
                     extData[source.var] = job?.data?.tenant
@@ -95,6 +94,7 @@ const loadExrVariable = async (reqPayload) => {
                         connId: source.connId,
                         dataSrcType: source.type,
                         tenant: source.tenant,
+                        accessToken: source.accessToken,
                         isObject: true,
                         query: generateQuery(source.filters)
                     }
@@ -103,7 +103,7 @@ const loadExrVariable = async (reqPayload) => {
 
                     var options = {
                         method: 'POST',
-                        url: `${utility.IsCheckDevTenant(reqData["tenant"]) ? keys.PortalDevHost : keys.PortalLiveHost}$/webRequestCollection/worflow`,
+                        url: `${utility.IsCheckDevTenant(reqData["tenant"]) ? keys.PortalDevHost : keys.PortalLiveHost}/webRequestCollection/worflow`,
                         body: reqData,
                         json: true
                     };
@@ -115,6 +115,7 @@ const loadExrVariable = async (reqPayload) => {
                         [source.var] = { ...result, connId: source.connId, tenant: source.tenant };
                     } else {
                         const res1 = await request(options)
+                        console.log("================================res1",res1);
                         const result = (res1.status && res1.result && res1.result.length >= 1) ? res1.result[0] : {};
                         extData[source.var] = { ...result, connId: source.connId, tenant: source.tenant };
                     }
@@ -127,6 +128,7 @@ const loadExrVariable = async (reqPayload) => {
                     connId: source.connId,
                     dataSrcType: source.type,
                     tenant: source.tenant,
+                    accessToken: source.accessToken,
                     query: generateQuery(source.filters)
                 }
 
@@ -217,12 +219,65 @@ const loadExrVariable = async (reqPayload) => {
                 const datetimeExpressionData = await replaceVariableFunction(source.defaultValue, extData, { isExpression: true, refence: 'viewPage', source: source, loadPayload })
                 extData[source.var] = datetimeExpressionData;
                 break;
+            case 'JsExpressionData':
+                const JsExpressionData = await replaceVariableFunction(source.defaultValue, extData, { refence: 'viewPage', source: source, loadPayload, isJSONExpression: true })
+                extData[source.var] = await getJSExpression(extData, JsExpressionData);
+                break;
         }
         return { status: true, data: extData };
     } catch (err) {
         console.log(err);
         return { status: false }
     }
+}
+// Function to recursively replace placeholders
+const replacePlaceholders = (jsonString, data) => {
+    try {
+        // Parse the JSON string into an object
+        var jsonObject = JSON.parse(jsonString);
+
+        // Function to recursively replace placeholders
+        function replacePlaceholders(obj, data) {
+            for (var prop in obj) {
+                if (typeof obj[prop] === 'string') {
+                    // Replace placeholders if found
+                    obj[prop] = obj[prop].replace(/\{\{(\w+)\.(\w+)\}\}/g, function (match, p1, p2) {
+                        return data[p1][p2]; // Replace with the corresponding value from the data object
+                    });
+                } else if (typeof obj[prop] === 'object') {
+                    // Recursively traverse nested objects
+                    replacePlaceholders(obj[prop], data);
+                }
+            }
+        }
+
+        // Replace placeholders in the JSON object
+        replacePlaceholders(jsonObject, data);
+
+        // Stringify the updated object back to JSON
+        var updatedJsonString = jsonObject
+
+        return updatedJsonString;
+    } catch (err) {
+        return JSON.parse(jsonString);
+    }
+
+}
+const getJSExpression = (varVault, JsExpressionData) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            let varVaultdata = {};
+            Object.keys(varVault).forEach(ele => {
+                varVaultdata[ele] = utility.isJSON(varVault[ele]) ? JSON.parse(varVault[ele]) : varVault[ele]
+            });
+            let dynamicFunction = new Function('moment', '_var', `${JsExpressionData}`);
+            resolve(dynamicFunction(moment, varVaultdata));
+            dynamicFunction = null;
+            return true;
+        } catch (err) {
+            resolve(err.message)
+        }
+    })
 }
 
 const generateQuery = (filtersPayload) => {

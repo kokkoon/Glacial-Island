@@ -81,16 +81,16 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
         try {
             switch (action.configuration.nodeType) {
                 case "Query Json":
-                    varVault = await queryJson(varVault, action);
+                    varVault = await queryJson(job, varVault, action);
                     break
                 case "JS Editor":
                     reqjsEditorData = await jsEditor(varVault, action);
                     varVault = reqjsEditorData.varVault;
                     break
                 case "Send Email":
-                    const reqEmailData = await sendEmail(job, varVault, action);
-                    job = reqEmailData.job;
-                    actionStatus = job.data.state;
+                    // const reqEmailData = await sendEmail(job, varVault, action);
+                    // job = reqEmailData.job;
+                    // actionStatus = job.data.state;
                     break
                 case "Send SMS":
                     const reqSMSData = await sendSMS(job, varVault, action);
@@ -100,7 +100,7 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                 case "Log Message":
                     const properties = (action && action.configuration) ? action.configuration.properties : "";
                     if (properties) {
-                        var logMsg = ejsRender(properties.value, varVault,)
+                        var logMsg = logMessage(job, varVault, action, properties)
                         var logObj = {
                             timestamp: moment(),
                             actionId: action.actionId,
@@ -250,6 +250,8 @@ const callCondition = (job, varVault, action, mainAction) => {
                     whenValue = properties.whencondition;
                 }
 
+                console.log(varVault)
+
                 switch (properties.operator) {
                     case 'equals':
                         variableValue = whenValue == properties.value;
@@ -258,10 +260,22 @@ const callCondition = (job, varVault, action, mainAction) => {
                         variableValue = whenValue != properties.value;
                         break;
                     case 'is_empty':
-                        variableValue = (whenValue == null || whenValue == "");
+                        variableValue = (whenValue == null || whenValue == "" || !whenValue || whenValue==undefined)
                         break;
                     case 'is_not_empty':
-                        variableValue = (whenValue != null || whenValue != "");
+                        variableValue = !(whenValue == null || whenValue == "" || !whenValue || whenValue==undefined)
+                        break;
+                    case 'less_then':
+                        variableValue = Number(whenValue) < Number(properties.value);
+                        break;
+                    case 'less_then_equals':
+                        variableValue = Number(whenValue) <= Number(properties.value);
+                        break;
+                    case 'greater_than':
+                        variableValue = Number(whenValue) > Number(properties.value);
+                        break;
+                    case 'greater_than_equals':
+                        variableValue = Number(whenValue) >= Number(properties.value);
                         break;
                 }
                 varVault[properties.variable] = variableValue;
@@ -513,6 +527,9 @@ const sendEmail = async (job, varVault, action) => {
     } catch (err) {
         console.log(err.message);
         console.log("Email service failed...")
+        var logObj = { timestamp: moment(), actionId: `${action.actionId}-${new Date().getTime()}`, status: "Start", activity: action.configuration.actionTitle, log: `Error : ${err.message} in ${action.nodeType} ` };
+        job.log(JSON.stringify(logObj));
+
         return { job }
     }
 }
@@ -542,7 +559,8 @@ const sendSMS = async (job, varVault, action) => {
                     }) //+12062079558
                     console.log(`Twilio message ID: ${msg.sid}`)
                 } catch (err) {
-
+                    var logObj = { timestamp: moment(), actionId: `${action.actionId}-${new Date().getTime()}`, status: "Start", activity: action.configuration.actionTitle, log: `Error : ${err.message} in ${action.nodeType} ` };
+                    job.log(JSON.stringify(logObj));
                 }
             });
             return { job }
@@ -553,12 +571,14 @@ const sendSMS = async (job, varVault, action) => {
     catch (err) {
         console.log(err.message);
         console.log("SMS service failed...")
+        var logObj = { timestamp: moment(), actionId: `${action.actionId}-${new Date().getTime()}`, status: "Start", activity: action.configuration.actionTitle, log: `Error : ${err.message} in ${action.nodeType} ` };
+        job.log(JSON.stringify(logObj));
         return { job }
     }
 
 }
 
-const queryJson = (varVault, action) => {
+const queryJson = (job, varVault, action) => {
     let properties = (action && action.configuration) ? action.configuration.properties : "";
     if (properties) {
         properties['nodeType'] = action.nodeType
@@ -578,6 +598,8 @@ const queryJson = (varVault, action) => {
                 }
                 resolve(varVault)
             } catch (err) {
+                var logObj = { timestamp: moment(), actionId: `${action.actionId}-${new Date().getTime()}`, status: "Start", activity: action.configuration.actionTitle, log: `Error : ${err.message} in ${action.nodeType} ` };
+                job.log(JSON.stringify(logObj));
                 console.log(err);
                 //Toast("Something went wrong action execution", "error")/
                 resolve(varVault)
@@ -585,6 +607,24 @@ const queryJson = (varVault, action) => {
         });
     } else {
         resolve(varVault)
+    }
+}
+
+const logMessage = (job, varVault, action, properties) => {
+    var value = properties.value;
+    try {
+        value = value.replaceAll("}}", "%>").replaceAll("{{", "<%=")
+        let varVaultdata = {};
+        Object.keys(varVault).forEach(ele => {
+            varVaultdata[ele] = JSON.parse(varVault[ele])
+        });
+        let outputHtml = ejs.render(value, varVaultdata);
+        return outputHtml.replaceAll("%>", "}}").replaceAll("<%=", "{{");
+    } catch (err) {
+        console.log(err);
+        var logObj = { timestamp: moment(), actionId: `${action.actionId}-${new Date().getTime()}`, status: "Start", activity: action.configuration.actionTitle, log: `Error : ${err.message} in ${action.nodeType} ` };
+        job.log(JSON.stringify(logObj));
+        return value.replaceAll("%>", "}}").replaceAll("<%=", "{{");
     }
 }
 
@@ -716,6 +756,8 @@ const callCollectionOperation = (varVault, actionData, job) => {
                     json: true
                 };
 
+                console.log(options)
+
                 const res = await request(options)
                 if (res.status) {
                     varVault[action.variable] = JSON.stringify(res.data)
@@ -729,22 +771,11 @@ const callCollectionOperation = (varVault, actionData, job) => {
 
         } catch (err) {
             console.log(err)
+            var logObj = { timestamp: moment(), actionId: `${actionData.actionId}-${new Date().getTime()}`, status: "Start", activity: actionData.configuration.actionTitle, log: `Error : ${err.message} in ${actionData.nodeType} ` };
+            job.log(JSON.stringify(logObj));
             resolve({ job, varVault })
         }
     })
-}
-
-const ejsRenderJson = (value, varVault) => {
-    value = replaceall("}}", "%>", replaceall("{{", "<%=", value));
-    value = replaceall("%}", "%>", replaceall("{%", "<%", value));
-    let varVaultdata = {};
-    Object.keys(varVault).forEach(ele => {
-        varVaultdata[ele] = JSON.parse(varVault[ele])
-    });
-    const outputHtml = //ejs.render(value, varVaultdata);
-        console.log(replaceall("&#34;", "'", outputHtml));
-    let JSONData = replaceall("&#34;", "'", outputHtml)
-    return JSONData;
 }
 
 const callWebService = async (actionData, varVault, job) => {
@@ -796,6 +827,8 @@ const callWebService = async (actionData, varVault, job) => {
         return { job, varVault }
     } catch (err) {
         console.log(err);
+        var logObj = { timestamp: moment(), actionId: `${actionData.actionId}-${new Date().getTime()}`, status: "Start", activity: actionData.configuration.actionTitle, log: `Error : ${err.message} in ${actionData.nodeType} ` };
+        job.log(JSON.stringify(logObj));
         return { job, varVault }
     }
 }
