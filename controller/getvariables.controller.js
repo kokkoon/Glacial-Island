@@ -115,7 +115,6 @@ const loadExrVariable = async (reqPayload) => {
                         [source.var] = { ...result, connId: source.connId, tenant: source.tenant };
                     } else {
                         const res1 = await request(options)
-                        console.log("================================res1", res1);
                         const result = (res1.status && res1.result && res1.result.length >= 1) ? res1.result[0] : {};
                         extData[source.var] = { ...result, connId: source.connId, tenant: source.tenant };
                     }
@@ -198,7 +197,12 @@ const loadExrVariable = async (reqPayload) => {
                 extData[source.var] = resWebrequest
                 break;
             case 'Text':
-                extData[source.var] = source.defaultValue;
+                if (source.var == 'requestOrigin') {
+                    extData[source.var] = source.value;
+                } else {
+                    extData[source.var] = source.defaultValue;
+                }
+
                 break;
             case 'Number':
                 extData[source.var] = source.defaultValue

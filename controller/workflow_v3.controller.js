@@ -88,9 +88,9 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
                     varVault = reqjsEditorData.varVault;
                     break
                 case "Send Email":
-                    // const reqEmailData = await sendEmail(job, varVault, action);
-                    // job = reqEmailData.job;
-                    // actionStatus = job.data.state;
+                    const reqEmailData = await sendEmail(job, varVault, action);
+                    job = reqEmailData.job;
+                    actionStatus = job.data.state;
                     break
                 case "Send SMS":
                     const reqSMSData = await sendSMS(job, varVault, action);
@@ -249,8 +249,6 @@ const callCondition = (job, varVault, action, mainAction) => {
                 } else {
                     whenValue = properties.whencondition;
                 }
-
-                console.log(varVault)
 
                 switch (properties.operator) {
                     case 'equals':
@@ -520,7 +518,21 @@ const sendEmail = async (job, varVault, action) => {
             console.log(mailOptions);
 
             mailOptions.emailBody = ejsRender(properties.messageBody, varVault);
-            await SendMail.sendEmail(mailOptions);
+            if (job?.data?.tenant && job?.data?.tenant != "") {
+                const options = {
+                    method: 'POST',
+                    url: `${utility.IsCheckDevTenant(job?.data?.tenant) ? keys.PortalDevHost : keys.PortalLiveHost}/workflow-send-email`,
+                    body: mailOptions,
+                    headers: {
+                        tenant: job?.data?.tenant
+                    },
+                    json: true
+                }
+                console.log(options);
+                await request(options)
+            } else {
+                await SendMail.sendEmail(mailOptions);
+            }
             joblogs(job, startTime, properties)
         }
         return { job }
@@ -756,8 +768,6 @@ const callCollectionOperation = (varVault, actionData, job) => {
                     json: true
                 };
 
-                console.log(options)
-
                 const res = await request(options)
                 if (res.status) {
                     varVault[action.variable] = JSON.stringify(res.data)
@@ -840,7 +850,7 @@ const jsEditor = async (varVault, actionData, job) => {
         Object.keys(varVault).forEach(ele => {
             _var[ele] = JSON.parse(varVault[ele])
         });
-        const JsExpressionData = jsFunction(_var,action)
+        const JsExpressionData = jsFunction(_var, action)
         varVault[action.variable] = JSON.stringify(JsExpressionData);
         return { job, varVault }
     } catch (err) {
