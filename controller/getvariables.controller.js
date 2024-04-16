@@ -115,7 +115,7 @@ const loadExrVariable = async (reqPayload) => {
                         [source.var] = { ...result, connId: source.connId, tenant: source.tenant };
                     } else {
                         const res1 = await request(options)
-                        console.log("================================res1",res1);
+                        console.log("================================res1", res1);
                         const result = (res1.status && res1.result && res1.result.length >= 1) ? res1.result[0] : {};
                         extData[source.var] = { ...result, connId: source.connId, tenant: source.tenant };
                     }
@@ -290,10 +290,11 @@ const generateQuery = (filtersPayload) => {
                     let tempQuery2 = { "$and": [] }
                     let tempQuery3 = { "$or": [] }
                     ele.filters.forEach(ele2 => {
+                        const valueData = ele2.value || ele2.filter.dataField
                         if (ele2.condition_type == "$and") {
-                            tempQuery2["$and"].push({ [replaceVariable(ele2.filter.field)]: { "$eq": ele2.value || ele2.filter.dataField } })
+                            tempQuery2["$and"].push({ [replaceVariable(ele2.filter.field)]: { "$eq": !isNaN(valueData) ? Number(valueData) : valueData  } })
                         } else {
-                            tempQuery3["$or"].push({ [replaceVariable(ele2.filter.field)]: { "$eq": ele2.value || ele2.filter.dataField } })
+                            tempQuery3["$or"].push({ [replaceVariable(ele2.filter.field)]: { "$eq": !isNaN(valueData) ? Number(valueData) : valueData  } })
                         }
                     });
 
@@ -309,10 +310,11 @@ const generateQuery = (filtersPayload) => {
                     let tempQuery2 = { "$and": [] }
                     let tempQuery3 = { "$or": [] }
                     ele.filters.forEach(ele2 => {
+                        const valueData = ele2.value || ele2.filter.dataField
                         if (ele2.condition_type == "$and") {
-                            tempQuery2["$and"].push({ [replaceVariable(ele2.filter.field)]: { "$eq": ele2.value || ele2.filter.dataField } })
+                            tempQuery2["$and"].push({ [replaceVariable(ele2.filter.field)]: { "$eq": !isNaN(valueData) ? Number(valueData) : valueData } })
                         } else {
-                            tempQuery3["$or"].push({ [replaceVariable(ele2.filter.field)]: { "$eq": ele2.value || ele2.filter.dataField } })
+                            tempQuery3["$or"].push({ [replaceVariable(ele2.filter.field)]: { "$eq": !isNaN(valueData) ? Number(valueData) : valueData  } })
                         }
                     });
 
