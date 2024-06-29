@@ -844,16 +844,17 @@ const callWebService = async (actionData, varVault, job) => {
 }
 
 const jsEditor = async (varVault, actionData, job) => {
+    let action = (actionData && actionData.configuration) ? actionData.configuration.properties : "";
     try {
-        let action = (actionData && actionData.configuration) ? actionData.configuration.properties : "";
         let _var = {};
         Object.keys(varVault).forEach(ele => {
             _var[ele] = JSON.parse(varVault[ele])
         });
         const JsExpressionData = jsFunction(_var, action)
-        varVault[action.variable] = JSON.stringify(JsExpressionData);
+        varVault[action.variable] = JsExpressionData ?  JSON.stringify(JsExpressionData) : JSON.stringify("")
         return { job, varVault }
     } catch (err) {
+        varVault[action.variable] = JSON.stringify("")
         return { job, varVault }
     }
 }
