@@ -528,8 +528,7 @@ const sendEmail = async (job, varVault, action) => {
                     },
                     json: true
                 }
-                console.log(options);
-                await request(options)
+                request(options)
             } else {
                 await SendMail.sendEmail(mailOptions);
             }
@@ -846,22 +845,23 @@ const callWebService = async (actionData, varVault, job) => {
 const jsEditor = async (varVault, actionData, job) => {
     let action = (actionData && actionData.configuration) ? actionData.configuration.properties : "";
     try {
+       
         let _var = {};
         Object.keys(varVault).forEach(ele => {
             _var[ele] = JSON.parse(varVault[ele])
         });
         const JsExpressionData = jsFunction(_var, action)
-        varVault[action.variable] = JsExpressionData ?  JSON.stringify(JsExpressionData) : JSON.stringify("")
+        varVault[action.variable] = JsExpressionData ?  JSON.stringify(JsExpressionData) : JSON.stringify("");
         return { job, varVault }
     } catch (err) {
-        varVault[action.variable] = JSON.stringify("")
+        varVault[action.variable] = JSON.stringify("");
         return { job, varVault }
     }
 }
 
 function jsFunction(varVault, action) {
-    var dynamicFunction = new Function(`const _var = ${JSON.stringify(varVault)}; ${action.value}`);
-    return dynamicFunction();
+    let dynamicFunction = new Function('moment', '_var', 'value', `${action.value}`);
+    return dynamicFunction(moment, varVault, varVault.value)
 }
 
 module.exports = {
