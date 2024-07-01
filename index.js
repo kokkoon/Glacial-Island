@@ -173,7 +173,7 @@ require('./routes/jobRoutes')(app);
 
 
 console.log(process.env.PORT);
-const PORT = 80;
+const PORT = 433;
 app.listen(PORT, '0.0.0.0', () => {
 	console.log(`Server is running on port ${PORT}`)
 })
