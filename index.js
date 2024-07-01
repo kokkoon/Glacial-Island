@@ -172,8 +172,8 @@ const imagesDir = path.join(__dirname, 'images');
 require('./routes/jobRoutes')(app);
 
 
-
-const PORT = process.env.PORT || '4000';
+console.log(process.env.PORT);
+const PORT = 80;
 app.listen(PORT, '0.0.0.0', () => {
 	console.log(`Server is running on port ${PORT}`)
 })
