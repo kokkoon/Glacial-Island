@@ -1,7 +1,7 @@
 const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV || "local";
 const Bull = require("bull");
-const FLOW_QUEUE= 'WORKFLOW';
+const FLOW_QUEUE= keys.WORKFLOW_FLOW_QUEUE;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
 const flowQueue = new Bull(FLOW_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });

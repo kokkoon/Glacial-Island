@@ -8,4 +8,5 @@ module.exports = {
   redisUser: 'h',
   twilioAccountSid: 'AC9905994c6e25ef3ed2c3b4e57cbda227',
   twilioAuthToken: '81cd983cd4e6c04426f95138716d0a49',
+  WORKFLOW_FLOW_QUEUE : 'WORKFLOW_STUDIO',
 };
