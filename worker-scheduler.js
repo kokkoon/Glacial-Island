@@ -9,7 +9,7 @@ const workers = process.env.WEB_CONCURRENCY || 2;
 const maxJobsPerWorker = 5;
 
 function start() {
-    const scheduleQueue = new Bull(QUEUE_NAME, { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+    const scheduleQueue = new Bull(QUEUE_NAME, keys.redisURL);
 
     scheduleQueue.process(maxJobsPerWorker, async (job) => {
         console.log(job.data)

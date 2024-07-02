@@ -1,7 +1,7 @@
 const keys = require('./config/keys');
 const Bull = require("bull");
 const QUEUE_NAME= 'TASK';
-const taskQueue = new Bull(QUEUE_NAME, { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const taskQueue = new Bull(QUEUE_NAME, keys.redisURL);
 
 taskQueue.process(function(job, done) {
   console.log("Processing task id:", job.id)

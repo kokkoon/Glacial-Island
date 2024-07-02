@@ -10,8 +10,7 @@ const moment = require('moment');
 const maxJobsPerWorker = 1;
 
 //function start() {
-    const flowQueue = new Bull(FLOW_QUEUE, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
-
+    const flowQueue = new Bull(FLOW_QUEUE, keys.redisURL); 
     flowQueue.process(maxJobsPerWorker, async (job) => {
         
         //Active

@@ -5,8 +5,8 @@ const NODE_ENV = process.env.NODE_ENV || "local";
 const Bull = require("bull");
 const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
 const TASK_QUEUE = 'TASK@' + NODE_ENV;
-const emailQueue = new Bull(EMAIL_QUEUE, { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
-const taskQueue = new Bull(TASK_QUEUE, { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL);
+const taskQueue = new Bull(TASK_QUEUE,  keys.redisURL);
 const SendMail = require('./services/SendMail');
 const taskqueries = require('./services/taskqueries');
 
