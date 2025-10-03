@@ -23,6 +23,8 @@ const { doesNotMatch } = require('assert');
 const accountSid = keys.twilioAccountSid;
 const authToken = keys.twilioAuthToken;
 const client = require('twilio')(accountSid, authToken);
+const queueController = require("../controller/queueController");
+
 
 
 module.exports = app => {
@@ -455,4 +457,8 @@ module.exports = app => {
 		//res.set('Content-Type', 'text/xml')
 	})
 
+	// Routes
+	app.get("/queues-v2", queueController.getQueues);
+	app.get("/queue-v2/:queueName/jobs", queueController.getJobs);
+	app.get("/queue-v2/:queueName/job/:jobId", queueController.getJobById);
 }
