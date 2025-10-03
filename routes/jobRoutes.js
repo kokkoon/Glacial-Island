@@ -24,7 +24,7 @@ const accountSid = keys.twilioAccountSid;
 const authToken = keys.twilioAuthToken;
 const client = require('twilio')(accountSid, authToken);
 const queueController = require("../controller/queueController");
-const cors = require('cors');
+
 
 
 module.exports = app => {
@@ -458,7 +458,7 @@ module.exports = app => {
 	})
 
 	// Routes
-	app.get("/queues-v2", cors(), queueController.getQueues);
-	app.get("/queue-v2/:queueName/jobs", cors(), queueController.getJobs);
-	app.get("/queue-v2/:queueName/job/:jobId", cors(), queueController.getJobById);
+	app.get("/queues-v2", queueController.getQueues);
+	app.get("/queue-v2/:queueName/jobs", queueController.getJobs);
+	app.get("/queue-v2/:queueName/job/:jobId", queueController.getJobById);
 }
