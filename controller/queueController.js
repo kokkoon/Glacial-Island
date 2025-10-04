@@ -82,7 +82,6 @@ exports.getQueues = async (req, res) => {
     }
 };
 
-// 2️⃣ Get all jobs of a particular queue (only tenant matching)
 exports.getJobs = async (req, res) => {
     try {
         const tenant = req.headers.tenant;
@@ -95,10 +94,10 @@ exports.getJobs = async (req, res) => {
             ["waiting", "active", "completed", "failed", "delayed"],
             0,
             50
-        )).filter(j => j); // Remove nulls
-
+        ))
         const jobsData = await Promise.all(
             jobs
+                .filter(job => job.data?.tenant == tenant)
                 .map(async job => ({
                     id: job.id,
                     status: await job.getState(),
@@ -114,7 +113,6 @@ exports.getJobs = async (req, res) => {
     }
 };
 
-// 3️⃣ Get details of a particular job by ID (only if tenant matches)
 exports.getJobById = async (req, res) => {
     try {
         const tenant = req.headers.tenant;
@@ -126,9 +124,9 @@ exports.getJobById = async (req, res) => {
         const job = await q.getJob(jobId);
         if (!job) return res.status(404).json({ error: "Job not found or deleted" });
 
-        // if (job?.data?.tenant !== tenant) {
-        //     return res.status(403).json({ error: "Access denied for this tenant" });
-        // }
+        if (job?.data?.tenant != tenant) {
+            return res.status(403).json({ error: "Access denied for this tenant" });
+        }
 
         const jobData = {
             id: job.id,
