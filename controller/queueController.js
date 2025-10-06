@@ -27,12 +27,14 @@ async function getAllQueueNames() {
 exports.getQueues = async (req, res) => {
     try {
         const tenant = req.headers.tenant;
-        if (!tenant) return res.status(400).json({ error: "Tenant header required" });
+        if (!tenant) {
+            return res.status(400).json({ error: "Tenant header required" });
+        }
 
         const queueNames = await getAllQueueNames();
 
         const countsArr = await Promise.all(
-            queueNames.map(async name => {
+            queueNames.map(async (name) => {
                 try {
                     const q = new Queue(name, { redis: keys.redisURL });
 
@@ -74,13 +76,27 @@ exports.getQueues = async (req, res) => {
             })
         );
 
+        // 🧠 Tenant-based filtering
+        let filteredQueues;
+        if (tenant.includes("-dev")) {
+            // Tenant has "-dev" → show only .dev queues
+            filteredQueues = countsArr.filter((q) =>
+                ["LOGS@glozic.dev", "SCHEDULE@glozic.dev"].includes(q.name)
+            );
+        } else {
+            // Tenant does NOT have "-dev" → show only .com queues
+            filteredQueues = countsArr.filter((q) =>
+                ["LOGS@glozic.com", "SCHEDULE@glozic.com"].includes(q.name)
+            );
+        }
 
-        res.json(countsArr);
+        res.json(filteredQueues);
     } catch (err) {
         console.error("getQueues error:", err);
         res.status(500).json({ error: err.message });
     }
 };
+
 
 exports.getJobs = async (req, res) => {
     try {
