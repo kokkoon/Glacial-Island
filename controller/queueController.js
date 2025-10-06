@@ -86,7 +86,6 @@ exports.getJobs = async (req, res) => {
     try {
         const tenant = req.headers.tenant;
         if (!tenant) return res.status(400).json({ error: "Tenant header required" });
-
         const { queueName } = req.params;
         const q = new Queue(queueName, { redis: keys.redisURL });
 
