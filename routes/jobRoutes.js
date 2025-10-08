@@ -460,5 +460,7 @@ module.exports = app => {
 	// Routes
 	app.get("/queues-v2", queueController.getQueues);
 	app.get("/queue-v2/:queueName/jobs", queueController.getJobs);
+	app.get("/queue-v2/:queueName/:jobId/jobsdetails", queueController.getJobsDetails);
 	app.get("/queue-v2/:queueName/job/:jobId", queueController.getJobById);
+	app.get("/getAllRepeatableJobs", queueController.getAllRepeatableJobs);
 }
