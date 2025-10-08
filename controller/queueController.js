@@ -198,6 +198,9 @@ exports.getAllRepeatableJobs = async (req, res) => {
 exports.getJobsDetails = async (req, res) => {
     try {
         const { queueName, jobId } = req.params;
+        if (queueName.endsWith(':')) {
+            queueName = queueName.replace(/:$/, '');
+        }
         const q = new Queue(queueName, { redis: keys.redisURL });
 
         // Fetch up to 100 jobs from all states
@@ -206,12 +209,9 @@ exports.getJobsDetails = async (req, res) => {
             0,
             100
         );
-
         // Filter jobs by tenant and jobId substring match
-        const filteredJobs = jobs.filter(job =>
+        const filteredJobs = jobs.filter(job => (job?.id?.includes(jobId)));
 
-            job?.id?.includes(jobId) // e.g. job.id contains "c6ed3a868efb1b659c8d042847891dcc"
-        );
 
         const jobsData = await Promise.all(
             filteredJobs?.map(async job => ({
