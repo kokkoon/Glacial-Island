@@ -197,7 +197,7 @@ exports.getAllRepeatableJobs = async (req, res) => {
 
 exports.getJobsDetails = async (req, res) => {
     try {
-        const { queueName, jobId } = req.params;
+        let { queueName, jobId } = req.params;
         if (queueName.endsWith(':')) {
             queueName = queueName.replace(/:$/, '');
         }
