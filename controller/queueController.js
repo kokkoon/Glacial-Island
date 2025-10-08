@@ -219,7 +219,7 @@ exports.getJobsDetails = async (req, res) => {
                 status: await job.getState(),
                 attemptsMade: job.attemptsMade,
                 cron: job.opts.repeat?.cron || null,
-                tz: job?.data?.tz || 'UTC',
+                tz: job?.data?.tz || '',
                 title: job?.data?.title || '',
                 description: job?.data?.description || '',
                 scheduleId: job?.data?.scheduleId || '',
