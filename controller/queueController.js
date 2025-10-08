@@ -210,11 +210,11 @@ exports.getJobsDetails = async (req, res) => {
         // Filter jobs by tenant and jobId substring match
         const filteredJobs = jobs.filter(job =>
 
-            job.id?.includes(jobId) // e.g. job.id contains "c6ed3a868efb1b659c8d042847891dcc"
+            job?.id?.includes(jobId) // e.g. job.id contains "c6ed3a868efb1b659c8d042847891dcc"
         );
 
         const jobsData = await Promise.all(
-            filteredJobs.map(async job => ({
+            filteredJobs?.map(async job => ({
                 id: job.id,
                 status: await job.getState(),
                 attemptsMade: job.attemptsMade,
