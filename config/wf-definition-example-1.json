@@ -1,0 +1,206 @@
+{
+    "version": "v1.0.0",
+    "_id": "6963581f3e9244001ee35a01",
+    "workflowName": "inspection-flow",
+    "workflowDescription": "Inspection flow for investigating execution of workflow",
+    "permission": {
+        "read": [],
+        "readAl": [],
+        "write": [],
+        "design": [],
+        "readAll": []
+    },
+    "createdBy": "691470375af5ab001eed9812",
+    "modifiedBy": "691470375af5ab001eed9812",
+    "createdTime": "2026-01-11T07:58:23.288Z",
+    "modifiedTime": "2026-01-11T07:58:23.288Z",
+    "definition": {
+        "actions": [
+            {
+                "number": 1,
+                "next": 0,
+                "previous": null,
+                "parent": "",
+                "configuration": {
+                    "actionID": "node-1",
+                    "actionTitle": "Log Message",
+                    "isHidden": false,
+                    "nodeType": "Log Message",
+                    "actionName": "logMessage",
+                    "isDisabled": false,
+                    "properties": {
+                        "variable": "",
+                        "value": "{{product.name}}"
+                    }
+                },
+                "branches": null,
+                "taskType": "function",
+                "datatype": {
+                    "type": "logMessage",
+                    "parent": "Functions"
+                }
+            },
+            {
+                "number": 0,
+                "next": 4,
+                "previous": 1,
+                "parent": "",
+                "configuration": {
+                    "actionID": "node-0",
+                    "actionTitle": "Assign Task",
+                    "isHidden": false,
+                    "nodeType": "Assign Task",
+                    "actionName": "assignTask",
+                    "isDisabled": false,
+                    "properties": {
+                        "taskName": "Get Approval",
+                        "taskDesc": "Get Approval to proceed",
+                        "outcome": "approve",
+                        "assign": "kkgan@glozic.com",
+                        "subject": "Approval Required",
+                        "msg": "Your approval is needed",
+                        "dueDate": "3",
+                        "doThisOnDue": "Auto-complete",
+                        "criteria": "Anyone",
+                        "outcomes": [
+                            "Approve",
+                            "Reject"
+                        ],
+                        "customOutcomes": [
+                            "received"
+                        ],
+                        "assignee": {
+                            "assignee": "kkgan@glozic.com"
+                        },
+                        "message": {
+                            "subject": "Approval Required",
+                            "message": "Your approval is needed"
+                        }
+                    }
+                },
+                "branches": [
+                    {
+                        "condition": false,
+                        "name": "branch0",
+                        "actions": [
+                            {
+                                "number": 3,
+                                "next": null,
+                                "previous": null,
+                                "parent": "node-0",
+                                "configuration": {
+                                    "actionID": "node-3",
+                                    "actionTitle": "Log Message",
+                                    "isHidden": false,
+                                    "nodeType": "Log Message",
+                                    "actionName": "logMessage",
+                                    "isDisabled": false,
+                                    "properties": {
+                                        "variable": "",
+                                        "value": "rejected"
+                                    }
+                                },
+                                "branches": null,
+                                "taskType": "function",
+                                "datatype": {
+                                    "type": "logMessage",
+                                    "parent": "Functions"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "condition": true,
+                        "name": "branch1",
+                        "actions": [
+                            {
+                                "number": 2,
+                                "next": null,
+                                "previous": null,
+                                "parent": "node-0",
+                                "configuration": {
+                                    "actionID": "node-2",
+                                    "actionTitle": "Log Message",
+                                    "isHidden": false,
+                                    "nodeType": "Log Message",
+                                    "actionName": "logMessage",
+                                    "isDisabled": false,
+                                    "properties": {
+                                        "variable": "",
+                                        "value": "approved"
+                                    }
+                                },
+                                "branches": null,
+                                "taskType": "function",
+                                "datatype": {
+                                    "type": "logMessage",
+                                    "parent": "Functions"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "taskType": "get-response",
+                "datatype": {
+                    "type": "assignTask",
+                    "parent": "Services"
+                }
+            },
+            {
+                "number": 4,
+                "next": null,
+                "previous": 0,
+                "parent": "",
+                "configuration": {
+                    "actionID": "node-4",
+                    "actionTitle": "Log Message",
+                    "isHidden": false,
+                    "nodeType": "Log Message",
+                    "actionName": "logMessage",
+                    "isDisabled": false,
+                    "properties": {
+                        "variable": "",
+                        "value": "done"
+                    }
+                },
+                "branches": null,
+                "taskType": "function",
+                "datatype": {
+                    "type": "logMessage",
+                    "parent": "Functions"
+                }
+            }
+        ],
+        "variables": [
+            {
+                "var": "user",
+                "type": "Object"
+            },
+            {
+                "url": "",
+                "var": "product",
+                "verified": false,
+                "type": "JsExpression",
+                "filters": [],
+                "role_id": "",
+                "tenant": "krislite-dev",
+                "defaultValue": "{\n  \"name\":\"Apple\",\n  \"origin\":\"Japan\"\n}",
+                "accessToken": "",
+                "accessFiledValues": [],
+                "isAllowPagination": false,
+                "isAdvanceFilter": false,
+                "isjsonquery": false,
+                "advanceFilterJsonValue": "",
+                "jsonquery": "",
+                "isDateRangeFilter": false,
+                "dataOrder": "",
+                "pageNo": "",
+                "pageRecord": "",
+                "options": "[]"
+            }
+        ]
+    },
+    "is_deleted": 0,
+    "title": "inspection-flow",
+    "__v": 0
+}

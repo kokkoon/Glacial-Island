@@ -13,7 +13,7 @@ const logQueue = new Bull(LOGS_QUEUE, keys.redisURL); // { redis: { port: keys.r
 const taskQueue = new Bull(TASK_QUEUE, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
 const Auth = require("../services/authentication");
-const sample_flow_definition = require('../config/wf-definition-example.json');
+const sample_flow_definition = require('../config/wf-definition-example-1.json');
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
 const redis = require('redis');
 const async = require('async');
@@ -31,6 +31,7 @@ module.exports = app => {
 	app.use(bodyParser.urlencoded({ extended: false }));
 	app.use(bodyParser.json());
 
+	/*
 	app.get('/allkeys/:id', async function (req, res) {
 		console.log(req.params.id)
 		redisqueries.allkeys(`bull:${FLOW_QUEUE}:${req.params.id}*`)
@@ -41,6 +42,48 @@ module.exports = app => {
 				res.json({ "status": false, "message": alert.message, "status_code": 401 })
 			})
 	})
+			*/
+
+	app.get('/allkeys/:id?', async function (req, res) {
+		try {
+			var { id } = req.params;
+
+			// 1. Check if ID is provided
+			if (!id) {
+				id = '*';
+			}
+
+			// 2. Optional: Basic sanitization/validation (e.g., alphanumeric only)
+			// This prevents directory traversal or Redis pattern injection
+			/*if (!/^[a-zA-Z0-9_*1-]+$/.test(id)) {
+				return res.status(400).json({ 
+					status: false, 
+					message: "Invalid format. Use alphanumeric or '*'.", 
+					status_code: 400 
+				});
+			}*/
+
+			console.log(`Searching keys for ID: ${id}`);
+
+			// 3. Perform the query using await
+			const keys = await redisqueries.allkeys(id);
+
+			res.json({ 
+				status: true, 
+				message: keys, 
+				status_code: 200 
+			});
+
+		} catch (error) {
+			// 4. Handle unexpected errors (Redis connection, etc.)
+			console.error("Redis Error:", error);
+			res.status(500).json({ 
+				status: false, 
+				message: "Internal Server Error", 
+				status_code: 500 
+			});
+		}
+	});
 
 	app.get('/allIds', async function (req, res) {
 		redisqueries.allIds(resData => {
@@ -54,7 +97,87 @@ module.exports = app => {
 		})
 	})
 
-	app.post('/orchestration', Auth.Authenticate, async function (req, res) {
+		/**
+     * API to clean completed and failed jobs from all primary queues
+     * Usage: GET /clean-queues?grace=1000 (grace is in milliseconds)
+     */
+    app.get('/clean-queues', async function (req, res) {
+        try {
+            // Default grace period of 24 hours (86,400,000 ms) if not specified
+            const grace = req.query.grace ? parseInt(req.query.grace) : 24 * 3600 * 1000;
+			const queue = req.query.queue ? String(req.query.queue) : FLOW_QUEUE;
+            
+            const queues = [
+                { name: queue, instance: flowQueue },
+                //{ name: LOGS_QUEUE, instance: logQueue },
+                //{ name: TASK_QUEUE, instance: taskQueue },
+                //{ name: EMAIL_QUEUE, instance: emailQueue }
+            ];
+
+            const results = {};
+			console.log(`Starting cleanup ${queue} with grace period: ${grace} ms`);
+
+            // Loop through each queue and clean both 'completed' and 'failed'
+            for (const q of queues) {
+                const cleanedCompleted = await q.instance.clean(grace, 'completed');
+                const cleanedFailed = await q.instance.clean(grace, 'failed');
+                
+                results[q.name] = {
+                    completed_removed: cleanedCompleted.length,
+                    failed_removed: cleanedFailed.length
+                };
+            }
+
+            console.log("Cleanup Results:", results);
+            res.status(200).json({ 
+                status: true, 
+                message: "Cleanup successful", 
+                grace_period_ms: grace,
+                data: results 
+            });
+
+        } catch (err) {
+            console.error("Cleanup Error:", err);
+            res.status(500).json({ status: false, message: err.message });
+        }
+    });
+
+	app.get('/purge-schedule', async function (req, res) {
+		try {
+			// 1. Define the specific queue causing the bloat
+			const scheduleQueueName = req.query.queue ? String(req.query.queue) : 'SCHEDULE@glozic.dev';
+			const scheduleQueue = new Bull(scheduleQueueName, keys.redisURL);
+
+			// 2. More aggressive cleaning: 0ms grace period
+			// This removes ALL completed and failed jobs regardless of age
+			const cleanedCompleted = await scheduleQueue.clean(0, 'completed');
+			const cleanedFailed = await scheduleQueue.clean(0, 'failed');
+
+			// 3. Clear "Wait" and "Delayed" if needed (Caution: this stops pending jobs)
+			// const cleanedWaiting = await scheduleQueue.clean(0, 'wait');
+
+			res.json({
+				status: true,
+				queue: scheduleQueueName,
+				removed: {
+					completed: cleanedCompleted.length,
+					failed: cleanedFailed.length
+				}
+			});
+
+			// Close local instance to prevent memory leaks
+			await scheduleQueue.close();
+			
+		} catch (err) {
+			res.status(500).json({ status: false, error: err.message });
+		}
+	});
+
+	const checkAuth = (NODE_ENV === 'test' || NODE_ENV === 'local') 
+		? (req, res, next) => next() // Skip middleware
+		: Auth.Authenticate;         // Use real middleware
+
+	app.post('/orchestration', checkAuth, async function (req, res) {
 		console.log(req.headers)
 		const url = URL.parse(req.url, true)
 		const mode = url.query.mode;
