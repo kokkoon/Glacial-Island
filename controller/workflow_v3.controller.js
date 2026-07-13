@@ -16,13 +16,14 @@ const keys = require('../config/keys');
 
 //ENV NODE_ENV
 const NODE_ENV = process.env.NODE_ENV || "local";
-const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
-const msgQueue = new Bull(MSG_QUEUE, keys.redisURL);
+//const TASK_QUEUE = 'TASK@' + NODE_ENV;
+//const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
 console.log('connect', keys.redisURL);
 
 //ENV redisqueries
 const redisqueries = require('../services/redisqueries');
 const SendMail = require('../services/SendMail');
+const taskStore = require('../services/taskStore');
 const { parseVariable, isJSON, isCheckString, ejsRender } = require('./helper.controller');
 const getvariables = require('./getvariables.controller');
 const S = require('string');
@@ -156,7 +157,6 @@ const callAction = (job, varVault, action, actionLists, actionStatus) => {
 const callAssignTask = (job, varVault, action, actions, actionStatus) => {
     return new Promise(async (resolve, reject) => {
         try {
-            debugger
             let properties = (action && action.configuration) ? action.configuration.properties : "";
             if (properties) {
                 properties['nodeType'] = action.nodeType;
@@ -169,12 +169,12 @@ const callAssignTask = (job, varVault, action, actions, actionStatus) => {
                     let count = 0;
                     while (assigneeList.length > count) {
                         let assignee = assigneeList[count];
-                        const taskId = await redisqueries.instanceNumber(`bull:${MSG_QUEUE}:id`);
+                        const taskId = await redisqueries.instanceNumber(`bull:${TASK_QUEUE}:id`);
                         const taskData = { ...properties };
                         taskData.name = properties.taskName;
                         taskData.owner = assignee.trim();
                         taskData.tenant = job.data.tenant;
-                        taskData.status = "New";
+                        taskData.status = "PendingNotification";
                         taskData.response = "";
                         taskData.taskDesc = properties.taskDesc;
                         taskData.instanceId = job.id;
@@ -182,9 +182,11 @@ const callAssignTask = (job, varVault, action, actions, actionStatus) => {
                         taskData.state = job.data.state;
                         taskData.linkedTask = count === 0 ? taskId : taskList[0].data.linkedTask;
                         taskData.taskId = taskId;
-                        const JobOpts = { jobId: assignee + "-" + taskData.linkedTask + "-" + taskId, removeOnComplete: true };
+                        taskData.createdAt = Date.now();
+                        taskData.workflowJobId = job.id;
+                        const JobOpts = { jobId: assignee + "-" + taskData.linkedTask + "-" + taskId };
                         taskList.push({ data: taskData, opts: JobOpts })
-                        msgQueue.add(taskData, JobOpts);
+                        await taskStore.createTask(taskData, JobOpts);
                         count++;
                     }
                     console.log("taskList:", taskList.length)

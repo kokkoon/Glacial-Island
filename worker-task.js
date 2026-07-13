@@ -1,19 +1,41 @@
-const keys = require('./config/keys');
-const Bull = require("bull");
-const QUEUE_NAME= 'TASK';
-const taskQueue = new Bull(QUEUE_NAME, keys.redisURL);
+const SendMail = require('./services/SendMail');
+const taskStore = require('./services/taskStore');
+const taskQueue = taskStore.taskQueue;
 
-taskQueue.process(function(job, done) {
-  console.log("Processing task id:", job.id)
-  var validEmail = /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
-  var validPhone = /^\+?[1-9]\d{9,14}$/;
-  if (validEmail.test(job.owner.trim())) {
-    // Check preferred notification mode and send notification
-    console.log("Send email notification for " + job.owner)
-  } else if (validPhone.test(job.owner.trim().replace(/[ -]/g, ''))) {
-    // send notification via sms/Whatsapp
-    console.log("Send sms/whatsapp notification for " + job.owner)
+const validEmail = /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+const validPhone = /^\+?[1-9]\d{9,14}$/;
+
+taskQueue.process(async (job) => {
+  console.log("Processing task id:", job.id);
+  const task = job.data || {};
+  const owner = (task.owner || "").trim();
+
+  let notificationSent = false;
+  let notificationMessage = "";
+  if (validEmail.test(owner)) {
+    const mailOptions = {
+      from: "'Glozic' <workflow@glozic.com>",
+      emailTo: owner,
+      emailSubject: task.taskName ? `Task assigned: ${task.taskName}` : 'Workflow task assigned',
+      emailBody: `You have a new workflow task:<br/><br/>${task.taskDesc || ''}<br/><br/>Task ID: ${task.taskId}<br/>Please respond with approve/reject at the task portal.`,
+    };
+    notificationSent = await SendMail.sendEmail(mailOptions);
+    notificationMessage = notificationSent ? 'Email notification sent' : 'Email notification failed';
+  } else if (validPhone.test(owner.replace(/[ -]/g, ''))) {
+    notificationSent = true;
+    notificationMessage = `SMS/WhatsApp notification requested for ${owner}`;
+    console.log(notificationMessage);
+  } else {
+    notificationMessage = `Invalid task owner address: ${owner}`;
+    console.log(notificationMessage);
   }
-  
-  done();
+
+  await taskStore.updateTask(job, {
+    status: notificationSent ? 'AwaitingResponse' : 'NotificationFailed',
+    sentAt: Date.now(),
+    notificationMessage,
+    updatedAt: Date.now()
+  });
+
+  return job.data;
 });

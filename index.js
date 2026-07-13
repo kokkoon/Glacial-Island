@@ -22,8 +22,8 @@ console.info = proxiedLog;
 console.log = proxiedLog;
 app.use(cors())
 //const serviceWorker = require('./worker-service');
-//const taskWorker = require('./worker-task');
 const flowWorker = require('./worker-flow');
+const taskWorker = require('./worker-task');
 //const emailWorker = require('./worker-email');
 
 console.log(redisqueries.allkeys);

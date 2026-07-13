@@ -5,12 +5,20 @@ const redis = require('redis');
 const redisScan = require('node-redis-scan');
 const async = require('async');
 
-//var client = redis.createClient(NODE_ENV=="production"?{url: keys.redisURL}:{host: keys.redisHost, port: keys.redisPort, password: keys.redisPWD});
-var client = redis.createClient({host: keys.redisHost, port: keys.redisPort, password: keys.redisPWD, username: keys.redisUser});
-//var client = redis.createClient({url: keys.redisURL});
-client.on('connect', function(){
-  console.log('Redis Connection Successfull', NODE_ENV);
-});
+const redisClientOptions = keys.redisURL
+  ? keys.redisURL
+  : {
+      host: keys.redisHost,
+      port: keys.redisPort,
+      password: keys.redisPWD,
+      // username: keys.redisUser // Note: v3 doesn't officially support 'username' unless using ACLs/latest 3.x
+    };
+
+const client = redis.createClient(redisClientOptions);
+
+client.on('connect', () => console.log('Redis Connection Successfull', NODE_ENV, keys.redisHost));
+client.on('error', (err) => console.log('Redis Client Error', err));
+
 var scanner = new redisScan(client)
 
 var getAllQueues = async function(callback) {
