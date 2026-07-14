@@ -1,3 +1,6 @@
+require('dotenv').config();
+
+
 const Bull = require('bull');
 const NODE_ENV = process.env.NODE_ENV || 'local';
 const REDIS_URL = process.env.REDIS_URL;
