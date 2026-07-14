@@ -28,115 +28,24 @@ const taskWorker = require('./worker-task');
 
 console.log(redisqueries.allkeys);
 redisqueries.getAllQueues(resData => {
-	resData = resData.length === 0 ? ["FLOW", "TEST"] : resData
-	const qDashboard = GUI({
+	const queueNames = (resData && resData.length > 0) ? resData : ["FLOW", "TEST"];
+	console.log("Arena queues (from Redis):", queueNames);
+
+	const dashboard = GUI({
 		Bull,
-		queues: resData.map(v => ({ name: v, hostId: "flow", url: keys.redisURL }))
+		queues: queueNames.map(name => ({
+			name,
+			hostId: "flow",
+			url: keys.redisURL
+		}))
 	}, {
 		basePath: "/",
 		disableListen: true
 	});
 
-	app.use('/queue_dashboard', qDashboard);
-})
-
-const dashboard = GUI({
-	Bull,
-	queues: [
-		{
-			name: "WORKFLOW_LIVE",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "WORKFLOW_STUDIO",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "WORKFLOW",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "MESSAGE@production",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "MESSAGE@development",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "MESSAGE@local",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-
-		{
-			name: "SERVICE",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "MESSAGE",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "RESPONSE",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "REPONSE",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "SCHEDULE",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "SCHEDULE@DESKTOP-HO2F260",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "SCHEDULE@glozic.com",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "SCHEDULE@flowngin.com",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "Logs@local",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "Logs@development",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-		{
-			name: "Logs@production",
-			hostId: "flow",
-			url: keys.redisURL
-		},
-	]
-}, {
-	basePath: "/",
-	disableListen: true
+	app.use('/dashboard', dashboard);
+	app.use('/queue_dashboard', dashboard);
 });
-
-
-app.use('/dashboard', dashboard);
 
 app.get('/random-images', (req, res) => {
 

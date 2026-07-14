@@ -31,20 +31,16 @@ const sendEmail = async (payload) => {
 }
 
 var transporter = function (host) {
-    var hostname = host;
-    return new Promise((resolve, reject) => {
-        
-        var smtp = {
-            smtp_server: "email-smtp.ap-southeast-1.amazonaws.com",
-            smtp_port: 587,
+    return new Promise((resolve) => {
+        resolve({
+            smtp_server: keys.smtpServer,
+            smtp_port: Number(keys.smtpPort) || 587,
             smtp_auth: {
-                user: "AKIA6QCOO42T53J2RKH6",
-                pass: 'BHcySRcpA88Qy5i9tRvAKWWafj3XHqrnTRtJhDI0iugw'
+                user: keys.smtpUser,
+                pass: keys.smtpPass
             },
-            smtp_fromMail: "workflow@glozic.com"
-        }
-        resolve(smtp)
-                        
+            smtp_fromMail: keys.smtpFrom
+        });
     });
 }
 

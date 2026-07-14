@@ -254,17 +254,28 @@ module.exports = app => {
 			})
 	})
 
-	app.post('/resumejob/:jobId/:outcome', Auth.Authenticate, async function (req, res) {
-		const jobId = req.params.jobId;
+	const resumePausedJob = async (jobId, outcome, res, asHtml) => {
+		let normalizedOutcome = outcome;
+		if (outcome.match(/App/i)) normalizedOutcome = 'approved';
+		else if (outcome.match(/Rej/i)) normalizedOutcome = 'rejected';
+
 		const job = await flowQueue.getJob(jobId);
-		if (job.data.state !== "Paused") {
-			res.send("Only a paused job could be resumed");
-			return;
+		if (!job) {
+			return res.status(404).send(asHtml
+				? `<html><body><h2>Job not found</h2><p>Job ID: ${jobId}</p></body></html>`
+				: "Job not found");
 		}
-		if (job.data.hasOwnProperty('current_branch') && job.data.current_branch.length > 0) job.data.definition.actions = [].concat(job.data.current_branch, job.data.definition.actions);
+		if (job.data.state !== "Paused") {
+			return res.send(asHtml
+				? `<html><body><h2>Unable to resume</h2><p>Only a paused job could be resumed.</p></body></html>`
+				: "Only a paused job could be resumed");
+		}
+		if (job.data.hasOwnProperty('current_branch') && job.data.current_branch.length > 0) {
+			job.data.definition.actions = [].concat(job.data.current_branch, job.data.definition.actions);
+		}
 		const jobData = { ...job.data };
-		jobData.definition.actions[0].configuration.properties.outcome = req.params.outcome;
-		jobData.outcome = req.params.outcome;
+		jobData.definition.actions[0].configuration.properties.outcome = normalizedOutcome;
+		jobData.outcome = normalizedOutcome;
 		flowQueue.getJobLogs(jobId)
 			.then(logs => {
 				const jobLogs = { ...logs }
@@ -275,12 +286,36 @@ module.exports = app => {
 						jobLogs.logs.forEach(log => {
 							resumedJob.log(log);
 						});
+						return resumedJob;
 					})
 					.then(resumedJob => {
-						res.send(resumedJob)
+						if (asHtml) {
+							res.send(`<html><body style="font-family:Arial,sans-serif;padding:24px;">
+								<h2>Response recorded</h2>
+								<p>Job <strong>${jobId}</strong> was marked as <strong>${normalizedOutcome}</strong>.</p>
+								<p>You can close this window.</p>
+							</body></html>`);
+						} else {
+							res.send(resumedJob);
+						}
 					})
 			})
+			.catch(err => {
+				console.log("resumejob error:", err);
+				res.status(500).send(asHtml
+					? `<html><body><h2>Error</h2><p>${err.message || err}</p></body></html>`
+					: err);
+			})
+	}
 
+	// API / Postman (requires Authorization + tenant headers)
+	app.post('/resumejob/:jobId/:outcome', Auth.Authenticate, async function (req, res) {
+		await resumePausedJob(req.params.jobId, req.params.outcome, res, false);
+	})
+
+	// Email Approve/Reject links (browser GET, no auth headers available)
+	app.get('/resumejob/:jobId/:outcome', async function (req, res) {
+		await resumePausedJob(req.params.jobId, req.params.outcome, res, true);
 	})
 
 	app.get('/instances/:flowId', Auth.Authenticate, function (req, res) {

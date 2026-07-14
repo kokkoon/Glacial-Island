@@ -10,7 +10,7 @@ const TASK_QUEUE = 'TASK@' + NODE_ENV;
 const taskQueue = new Bull(TASK_QUEUE, REDIS_URL);
 
 // Used to Create Workflow / Flow Bull
-const WORKFLOW_QUEUE = process.env.WORKFLOW_FLOW_QUEUE || ('WORKFLOW@' + NODE_ENV);
+const WORKFLOW_QUEUE = 'WORKFLOW@' + NODE_ENV;
 const FLOW_QUEUE = WORKFLOW_QUEUE;
 const workflowQueue = new Bull(WORKFLOW_QUEUE, REDIS_URL);
 const flowQueue = workflowQueue;
