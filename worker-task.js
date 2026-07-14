@@ -1,6 +1,6 @@
 const SendMail = require('./services/SendMail');
 const taskStore = require('./services/taskStore');
-const { taskQueue } = require('./config/bull');
+const { taskQueue, TASK_QUEUE } = require('./config/bull');
 
 const validEmail = /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
 const validPhone = /^\+?[1-9]\d{9,14}$/;
@@ -39,3 +39,6 @@ taskQueue.process(async (job) => {
 
   return job.data;
 });
+
+//throng({ workers, start })
+console.log("Task worker started for ", TASK_QUEUE);
