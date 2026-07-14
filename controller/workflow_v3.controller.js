@@ -1,7 +1,6 @@
 
 const JSONPath = require('jsonpath');
 const jsonLogic = require('json-logic-js');
-const Bull = require('bull');
 const moment = require('moment');
 const twilio = require('twilio');
 const math = require('mathjs');
@@ -13,11 +12,7 @@ const utility = require("../utils/utility")
 const jp = JSONPath;
 //ENV config
 const keys = require('../config/keys');
-
-//ENV NODE_ENV
-const NODE_ENV = process.env.NODE_ENV || "local";
-//const TASK_QUEUE = 'TASK@' + NODE_ENV;
-//const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
+const { TASK_QUEUE } = require('../config/bull');
 console.log('connect', keys.redisURL);
 
 //ENV redisqueries

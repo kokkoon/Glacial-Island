@@ -1,16 +1,13 @@
-//const throng = require('throng');
-const Bull = require('bull');
-const keys = require('./config/keys');
-const FLOW_QUEUE = keys.WORKFLOW_FLOW_QUEUE
+const { flowQueue, FLOW_QUEUE } = require('./config/bull');
 const orchestrator = require('./services/orchestrator');
 const moment = require('moment');
+
 
 //const workers = process.env.WEB_CONCURRENCY || 1;
 
 const maxJobsPerWorker = 1;
 
 //function start() {
-    const flowQueue = new Bull(FLOW_QUEUE, keys.redisURL); 
     flowQueue.process(maxJobsPerWorker, async (job) => {
         
         //Active

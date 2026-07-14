@@ -2,9 +2,9 @@ const express = require('express');
 const Bull = require('bull');
 const GUI = require('bull-arena');
 const keys = require('./config/keys');
+const { connectQueue } = require('./config/bull');
 
 const PORT = process.env.PORT || '6000';
-const REDIS_URL = process.env.REDIS_URL || keys.redisURL
 
 const queueDashboard = GUI({
     Bull,
@@ -39,7 +39,7 @@ let app = express();
 
 app.use('/queue_dashboard', queueDashboard);
 
-let scheduleQueue = new Bull('SCHEDULE', REDIS_URL);
+let scheduleQueue = connectQueue('SCHEDULE');
 
 scheduleQueue.on('global:completed', (jobId, result) => {
     console.log(`Job completed with result ${result}`);

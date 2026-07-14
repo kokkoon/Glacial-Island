@@ -3,15 +3,17 @@ const bodyParser = require("body-parser");
 const URL = require('url');
 const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV || "local";
-const Bull = require("bull");
-const FLOW_QUEUE = keys.WORKFLOW_FLOW_QUEUE;
-const LOGS_QUEUE = 'Logs@' + NODE_ENV;
-const TASK_QUEUE = 'TASK@' + NODE_ENV;
-const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
-const flowQueue = new Bull(FLOW_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
-const logQueue = new Bull(LOGS_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
-const taskQueue = new Bull(TASK_QUEUE, keys.redisURL); //{ redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
-const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL); // { redis: { port: keys.redisPort, host: keys.redisHost, password: keys.redisPWD } });
+const {
+	flowQueue,
+	logQueue,
+	taskQueue,
+	emailQueue,
+	FLOW_QUEUE,
+	LOGS_QUEUE,
+	TASK_QUEUE,
+	EMAIL_QUEUE,
+	connectQueue,
+} = require('../config/bull');
 const Auth = require("../services/authentication");
 const sample_flow_definition = require('../config/wf-definition-example-1.json');
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
@@ -146,7 +148,7 @@ module.exports = app => {
 		try {
 			// 1. Define the specific queue causing the bloat
 			const scheduleQueueName = req.query.queue ? String(req.query.queue) : 'SCHEDULE@glozic.dev';
-			const scheduleQueue = new Bull(scheduleQueueName, keys.redisURL);
+			const scheduleQueue = connectQueue(scheduleQueueName);
 
 			// 2. More aggressive cleaning: 0ms grace period
 			// This removes ALL completed and failed jobs regardless of age

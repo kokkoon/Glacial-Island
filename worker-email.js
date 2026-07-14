@@ -1,12 +1,6 @@
-const keys = require('./config/keys');
 const nodemailer = require('nodemailer');
 const smtpTransport = require("nodemailer-smtp-transport");
-const NODE_ENV = process.env.NODE_ENV || "local";
-const Bull = require("bull");
-const EMAIL_QUEUE = 'EMAIL@' + NODE_ENV;
-const TASK_QUEUE = 'TASK@' + NODE_ENV;
-const emailQueue = new Bull(EMAIL_QUEUE, keys.redisURL);
-const taskQueue = new Bull(TASK_QUEUE,  keys.redisURL);
+const { emailQueue, taskQueue } = require('./config/bull');
 const SendMail = require('./services/SendMail');
 const taskqueries = require('./services/taskqueries');
 

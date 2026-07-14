@@ -1,12 +1,10 @@
 // flow actions/activities/functions examples to be implemented in it's own module and imported here
 const JSONPath = require('jsonpath');
 const jsonLogic = require('json-logic-js');
-const Bull = require('bull');
 const keys = require('../config/keys');
-const QUEUE_NAME = "SERVICE";
-const REDIS_URL = keys.redisURL;
-const serviceQueue = new Bull(QUEUE_NAME, REDIS_URL);
-const resQueue = new Bull('RESPONSE', REDIS_URL);
+const { connectQueue } = require('../config/bull');
+const serviceQueue = connectQueue('SERVICE');
+const resQueue = connectQueue('RESPONSE');
 const moment = require('moment');
 const twilio = require('twilio');
 const client = new twilio(keys.twilioAccountSid, keys.twilioAuthToken);

@@ -1,6 +1,6 @@
 const SendMail = require('./services/SendMail');
 const taskStore = require('./services/taskStore');
-const taskQueue = taskStore.taskQueue;
+const { taskQueue } = require('./config/bull');
 
 const validEmail = /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
 const validPhone = /^\+?[1-9]\d{9,14}$/;

@@ -1,7 +1,6 @@
 
 const JSONPath = require('jsonpath');
 const jsonLogic = require('json-logic-js');
-const Bull = require('bull');
 const moment = require('moment');
 const twilio = require('twilio');
 const math = require('mathjs');
@@ -12,10 +11,6 @@ const ejs = require('ejs');
 const jp = JSONPath;
 //ENV config
 const keys = require('../config/keys');
-
-//ENV NODE_ENV
-const NODE_ENV = process.env.NODE_ENV || "local";
-const MSG_QUEUE = 'MESSENGER@' + NODE_ENV;
 
 //ENV redisqueries
 const redisqueries = require('../services/redisqueries');

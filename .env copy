@@ -1,0 +1,18 @@
+PORT=4000
+NODE_ENV=local   # or development / production
+
+
+# Redis Config
+WORKFLOW_API_URL=https://glacial-island-24139.herokuapp.com
+REDIS_URL=redis://:9kcYe9Z2721c@104-238-212-163.cloud-xip.com:6379
+REDIS_HOST=104-238-212-163.cloud-xip.com
+REDIS_PORT=6379
+REDIS_PWD=9kcYe9Z2721c
+REDIS_USER=h
+
+
+# optional overrides
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=local_test_token
+PORTAL_DEV_HOST=https://portal.glozic.dev/api
+PORTAL_LIVE_HOST=https://portal.glozic.com/api

@@ -1,8 +1,4 @@
-const Bull = require('bull');
-const keys = require('../config/keys');
-const NODE_ENV = process.env.NODE_ENV || 'local';
-const TASK_QUEUE = 'TASK@' + NODE_ENV;
-const taskQueue = new Bull(TASK_QUEUE, keys.redisURL);
+const { taskQueue, TASK_QUEUE } = require('../config/bull');
 
 const createTask = async (taskData, options = {}) => {
   const jobOptions = {

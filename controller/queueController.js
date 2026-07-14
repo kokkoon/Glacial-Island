@@ -1,6 +1,6 @@
-const Queue = require("bull");
 const Redis = require("ioredis");
 const keys = require("../config/keys");
+const { connectQueue } = require("../config/bull");
 
 // ===============================
 // Redis Connection
@@ -35,7 +35,7 @@ exports.getQueues = async (req, res) => {
         const countsArr = await Promise.all(
             queueNames.map(async (name) => {
                 try {
-                    const q = new Queue(name, { redis: keys.redisURL });
+                    const q = connectQueue(name);
 
                     // Get all jobs and remove null entries
                     const allJobs = (await q.getJobs([
@@ -102,7 +102,7 @@ exports.getJobs = async (req, res) => {
         const tenant = req.headers.tenant;
         if (!tenant) return res.status(400).json({ error: "Tenant header required" });
         const { queueName } = req.params;
-        const q = new Queue(queueName, { redis: keys.redisURL });
+        const q = connectQueue(queueName);
 
         const jobs = (await q.getJobs(
             ["waiting", "active", "completed", "failed", "delayed"],
@@ -133,7 +133,7 @@ exports.getJobById = async (req, res) => {
         if (!tenant) return res.status(400).json({ error: "Tenant header required" });
 
         const { queueName, jobId } = req.params;
-        const q = new Queue(queueName, { redis: keys.redisURL });
+        const q = connectQueue(queueName);
 
         const job = await q.getJob(jobId);
         if (!job) return res.status(404).json({ error: "Job not found or deleted" });
@@ -167,7 +167,7 @@ exports.getAllRepeatableJobs = async (req, res) => {
         const repeatableJobs = [];
 
         for (const name of queueNames) {
-            const q = new Queue(name, { redis: keys.redisURL });
+            const q = connectQueue(name);
             const repeats = await q.getRepeatableJobs();
 
             for (const r of repeats) {
@@ -201,7 +201,7 @@ exports.getJobsDetails = async (req, res) => {
         if (queueName.endsWith(':')) {
             queueName = queueName.replace(/:$/, '');
         }
-        const q = new Queue(queueName, { redis: keys.redisURL });
+        const q = connectQueue(queueName);
 
         // Fetch up to 100 jobs from all states
         const jobs = await q.getJobs(
