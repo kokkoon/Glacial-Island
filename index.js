@@ -6,7 +6,7 @@ const app = express();
 const Bull = require('bull');
 const GUI = require('bull-arena');
 const keys = require('./config/keys');
-const redisqueries = require('./services/redisqueries');
+const { TASK_QUEUE, WORKFLOW_QUEUE } = require('./config/bull');
 const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
@@ -26,26 +26,25 @@ const flowWorker = require('./worker-flow');
 const taskWorker = require('./worker-task');
 //const emailWorker = require('./worker-email');
 
-console.log(redisqueries.allkeys);
-redisqueries.getAllQueues(resData => {
-	const queueNames = (resData && resData.length > 0) ? resData : ["FLOW", "TEST"];
-	console.log("Arena queues (from Redis):", queueNames);
+// Arena only shows queues defined in config/bull.js (TASK + WORKFLOW).
+// Do not auto-discover Redis queues (avoids web-service-queue, SCHEDULE@*, etc.).
+const arenaQueues = [WORKFLOW_QUEUE, TASK_QUEUE].map(name => ({
+	name,
+	hostId: "flow",
+	url: keys.redisURL
+}));
+console.log("Arena queues:", arenaQueues.map(q => q.name));
 
-	const dashboard = GUI({
-		Bull,
-		queues: queueNames.map(name => ({
-			name,
-			hostId: "flow",
-			url: keys.redisURL
-		}))
-	}, {
-		basePath: "/",
-		disableListen: true
-	});
-
-	app.use('/dashboard', dashboard);
-	app.use('/queue_dashboard', dashboard);
+const dashboard = GUI({
+	Bull,
+	queues: arenaQueues
+}, {
+	basePath: "/",
+	disableListen: true
 });
+
+app.use('/dashboard', dashboard);
+app.use('/queue_dashboard', dashboard);
 
 app.get('/random-images', (req, res) => {
 

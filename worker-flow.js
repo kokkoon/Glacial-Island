@@ -1,5 +1,6 @@
 const { flowQueue, FLOW_QUEUE } = require('./config/bull');
 const orchestrator = require('./services/orchestrator');
+const { saveWorkflowLogs } = require('./services/saveWorkflowLogs');
 const moment = require('moment');
 
 
@@ -26,10 +27,25 @@ const maxJobsPerWorker = 1;
         await job.update(job.data);
 
         // Start orchestration job
-        orchestrator.startflow(job)
-        return { value: "job done"}
+        await orchestrator.startflow(job);
+
+        if (job.data.state === "Failed") {
+            throw new Error(job.data.error || "Workflow failed");
+        }
+
+        return { value: "job done", state: job.data.state };
     })
 //}
+
+flowQueue.on('completed', async (job) => {
+    // Paused jobs are waiting on a task — not a final complete
+    if (job?.data?.state === "Paused") return;
+    await saveWorkflowLogs(job, 'completed');
+});
+
+flowQueue.on('failed', async (job, err) => {
+    await saveWorkflowLogs(job, 'failed', err);
+});
 
 //throng({ workers, start })
 console.log("Flow worker started for ", FLOW_QUEUE);
