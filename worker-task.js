@@ -1,3 +1,4 @@
+const keys = require('./config/keys');
 const SendMail = require('./services/SendMail');
 const taskStore = require('./services/taskStore');
 const { taskQueue, TASK_QUEUE } = require('./config/bull');

@@ -5,13 +5,9 @@ const keys = require('../config/keys');
 const NODE_ENV = process.env.NODE_ENV || "local";
 const {
 	flowQueue,
-	logQueue,
 	taskQueue,
-	emailQueue,
 	FLOW_QUEUE,
-	LOGS_QUEUE,
 	TASK_QUEUE,
-	EMAIL_QUEUE,
 	connectQueue,
 } = require('../config/bull');
 const Auth = require("../services/authentication");
@@ -111,9 +107,6 @@ module.exports = app => {
             
             const queues = [
                 { name: queue, instance: flowQueue },
-                //{ name: LOGS_QUEUE, instance: logQueue },
-                //{ name: TASK_QUEUE, instance: taskQueue },
-                //{ name: EMAIL_QUEUE, instance: emailQueue }
             ];
 
             const results = {};
@@ -488,6 +481,7 @@ module.exports = app => {
 
 	app.post('/email/notify', function (req, res) {
 		let message = req.body;
+		const emailQueue = connectQueue('EMAIL@' + NODE_ENV);
 		emailQueue.add(message)
 			.then(result => {
 				res.status(200).send("Success");
