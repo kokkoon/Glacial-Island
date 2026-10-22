@@ -1,11 +1,6 @@
-const nodemailer = require('nodemailer');
-const smtpTransport = require("nodemailer-smtp-transport");
-const { taskQueue, connectQueue } = require('./config/bull');
+const { taskQueue, emailQueue, EMAIL_QUEUE } = require('./config/bull');
 const SendMail = require('./services/SendMail');
 const taskqueries = require('./services/taskqueries');
-
-const NODE_ENV = process.env.NODE_ENV || 'local';
-const emailQueue = connectQueue('EMAIL@' + NODE_ENV);
 
 emailQueue.process(function(job, done) {
   console.log("Processing job id:", job.id)
@@ -82,3 +77,5 @@ emailQueue.process(function(job, done) {
 
   done();
 });
+
+console.log("Email worker started for ", EMAIL_QUEUE);

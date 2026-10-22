@@ -6,6 +6,7 @@ const NODE_ENV = process.env.NODE_ENV || "local";
 const {
 	flowQueue,
 	taskQueue,
+	emailQueue,
 	FLOW_QUEUE,
 	TASK_QUEUE,
 	connectQueue,
@@ -480,9 +481,7 @@ module.exports = app => {
 	})
 
 	app.post('/email/notify', function (req, res) {
-		let message = req.body;
-		const emailQueue = connectQueue('EMAIL@' + NODE_ENV);
-		emailQueue.add(message)
+		emailQueue.add(req.body)
 			.then(result => {
 				res.status(200).send("Success");
 			})

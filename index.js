@@ -1,18 +1,18 @@
 //replaced server.js
 require('dotenv').config()
 
+
 const express = require("express");
 const app = express();
 const Bull = require('bull');
 const GUI = require('bull-arena');
 const keys = require('./config/keys');
-const { TASK_QUEUE, WORKFLOW_QUEUE } = require('./config/bull');
+const { TASK_QUEUE, WORKFLOW_QUEUE, EMAIL_QUEUE } = require('./config/bull');
 const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
 const cors = require('cors');
 
-const { log } = console;
 function proxiedLog(...args) {
 	const l1 = ((new Error('log')).stack.split('\n')[2] || '…')
 	const line = (l1.match(/[^\/||^\\]*(?=\))/) || ['not found'])[0];
@@ -21,14 +21,14 @@ function proxiedLog(...args) {
 console.info = proxiedLog;
 console.log = proxiedLog;
 app.use(cors())
-//const serviceWorker = require('./worker-service');
+// //const serviceWorker = require('./worker-service');
 const flowWorker = require('./worker-flow');
 const taskWorker = require('./worker-task');
-//const emailWorker = require('./worker-email');
+const emailWorker = require('./worker-email');
 
-// Arena only shows queues defined in config/bull.js (TASK + WORKFLOW).
+// Arena only shows queues defined in config/bull.js (TASK + WORKFLOW + EMAIL).
 // Do not auto-discover Redis queues (avoids web-service-queue, SCHEDULE@*, etc.).
-const arenaQueues = [WORKFLOW_QUEUE, TASK_QUEUE].map(name => ({
+const arenaQueues = [WORKFLOW_QUEUE, TASK_QUEUE, EMAIL_QUEUE].map(name => ({
 	name,
 	hostId: "flow",
 	url: keys.redisURL
