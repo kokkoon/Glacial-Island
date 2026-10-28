@@ -21,6 +21,9 @@ function proxiedLog(...args) {
 console.info = proxiedLog;
 console.log = proxiedLog;
 app.use(cors())
+
+
+
 // //const serviceWorker = require('./worker-service');
 const flowWorker = require('./worker-flow');
 const taskWorker = require('./worker-task');
