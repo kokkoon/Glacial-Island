@@ -54,8 +54,10 @@ async function withRetry(fn, attempts = 3) {
 	throw lastError;
 }
 
-function createCoordinator({ config, store, glozic, registry }) {
-	const workerId = `${os.hostname()}:${process.pid}:${crypto.randomBytes(4).toString('hex')}`;
+/** One poll loop per glozic environment; environments share nothing but the Redis connection. */
+function createCoordinator({ env, config, store, glozic, registry }) {
+	const workerId = `${env.name}:${os.hostname()}:${process.pid}:${crypto.randomBytes(4).toString('hex')}`;
+	const tag = `[scheduler:${env.name}]`;
 	const executionSlots = new Semaphore(config.maxConcurrency);
 	const state = {
 		running: false,
@@ -79,10 +81,10 @@ function createCoordinator({ config, store, glozic, registry }) {
 			const count = await registry.refresh();
 			state.lastRefreshAt = new Date();
 			state.lastRefreshError = '';
-			console.log(`[scheduler] tenant registry refreshed (${count} tenant(s))`);
+			console.log(`${tag} tenant registry refreshed (${count} tenant(s))`);
 		} catch (err) {
 			state.lastRefreshError = err.message;
-			console.warn(`[scheduler] tenant registry refresh failed: ${err.message}`);
+			console.warn(`${tag} tenant registry refresh failed: ${err.message}`);
 		}
 	}
 
@@ -117,16 +119,16 @@ function createCoordinator({ config, store, glozic, registry }) {
 				if (!succeeded) break;
 			}
 		} catch (err) {
-			console.warn(`[scheduler] ${key}: ${err.message}`);
+			console.warn(`${tag} ${key}: ${err.message}`);
 			if (err.statusCode === 409 || err.statusCode === 404) canComplete = false;
 		}
 		try {
 			if (canComplete) {
 				const result = await withRetry(() => glozic.completeExecution(tenant, key, leaseToken));
-				console.log(`[scheduler] ${key}: ${result.status}${result.reason ? ` (${result.reason})` : ''}`);
+				console.log(`${tag} ${key}: ${result.status}${result.reason ? ` (${result.reason})` : ''}`);
 			}
 		} catch (err) {
-			console.warn(`[scheduler] ${key}: could not complete: ${err.message}`);
+			console.warn(`${tag} ${key}: could not complete: ${err.message}`);
 		} finally {
 			state.inFlight -= 1;
 			executionSlots.release();
@@ -135,19 +137,19 @@ function createCoordinator({ config, store, glozic, registry }) {
 
 	async function processTenant(tenant) {
 		if (state.stopping) return;
-		const lockKey = `scheduler:lock:tenant:${tenant}`;
+		const lockKey = `${env.lockPrefix}${tenant}`;
 		let lockToken = null;
 		try {
 			lockToken = await store.acquire(lockKey, config.lockTtlMs);
 		} catch (err) {
-			console.warn(`[scheduler] lock for ${tenant} unavailable: ${err.message}`);
+			console.warn(`${tag} lock for ${tenant} unavailable: ${err.message}`);
 			return;
 		}
 		if (!lockToken) return;
 
 		const renewTimer = setInterval(() => {
 			store.renew(lockKey, lockToken, config.lockTtlMs)
-				.then((ok) => { if (!ok) console.warn(`[scheduler] lost lock for ${tenant}; leases still protect in-flight executions`); })
+				.then((ok) => { if (!ok) console.warn(`${tag} lost lock for ${tenant}; leases still protect in-flight executions`); })
 				.catch(() => {});
 		}, Math.floor(config.lockTtlMs / 3));
 
@@ -158,10 +160,10 @@ function createCoordinator({ config, store, glozic, registry }) {
 				leaseMs: config.leaseMs,
 				graceMs: config.catchupGraceMs,
 			});
-			if (executions.length) console.log(`[scheduler] ${tenant}: claimed ${executions.length} execution(s)`);
+			if (executions.length) console.log(`${tag} ${tenant}: claimed ${executions.length} execution(s)`);
 			await runPool(executions, config.maxTenantConcurrency, (execution) => runExecution(tenant, execution));
 		} catch (err) {
-			console.warn(`[scheduler] ${tenant}: claim failed: ${err.message}`);
+			console.warn(`${tag} ${tenant}: claim failed: ${err.message}`);
 			if (err.statusCode === 400 || err.statusCode === 403 || err.code === 'INVALID_TENANT') {
 				await registry.setActive(tenant, false).catch(() => {});
 			}
@@ -186,7 +188,7 @@ function createCoordinator({ config, store, glozic, registry }) {
 		state.timer = setTimeout(async () => {
 			state.currentTick = tick().catch((err) => {
 				state.lastTickError = err.message;
-				console.warn(`[scheduler] tick failed: ${err.message}`);
+				console.warn(`${tag} tick failed: ${err.message}`);
 			});
 			await state.currentTick;
 			state.currentTick = null;
@@ -201,7 +203,7 @@ function createCoordinator({ config, store, glozic, registry }) {
 		start() {
 			if (state.running) return;
 			state.running = true;
-			console.log(`[scheduler] started as ${workerId}; polling every ${config.pollIntervalMs}ms`);
+			console.log(`${tag} started as ${workerId}; polling every ${config.pollIntervalMs}ms`);
 			state.refreshTimer = setInterval(refreshRegistry, config.registryRefreshMs);
 			// Give the Redis client a moment to connect before the first refresh and tick.
 			setTimeout(() => refreshRegistry().finally(() => scheduleNext(0)), 2000);
@@ -215,12 +217,14 @@ function createCoordinator({ config, store, glozic, registry }) {
 			clearInterval(state.refreshTimer);
 			if (state.currentTick) await Promise.race([state.currentTick, sleep(config.shutdownGraceMs)]);
 			state.running = false;
-			if (state.inFlight > 0) console.warn(`[scheduler] stopped with ${state.inFlight} execution(s) in flight; they will be recovered after their lease expires`);
+			if (state.inFlight > 0) console.warn(`${tag} stopped with ${state.inFlight} execution(s) in flight; they will be recovered after their lease expires`);
 		},
 
 		health() {
 			return {
 				enabled: true,
+				environment: env.name,
+				glozic: env.label,
 				workerId,
 				running: state.running,
 				stopping: state.stopping,

@@ -1,8 +1,8 @@
 const http = require('http');
 const https = require('https');
 const { URL } = require('url');
+const { isDevTenant } = require('./config');
 
-const DEV_TENANT = /^[a-z0-9][a-z0-9-]*-dev$/i;
 // A claim batch carries up to 25 executions x 5 web-service configs (bodies up to 100KB each).
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 
@@ -17,22 +17,23 @@ class GlozicError extends Error {
 	}
 }
 
-const isDevTenant = (tenant) => typeof tenant === 'string' && DEV_TENANT.test(tenant);
-
-/** HTTP client for glozic-stagging's internal scheduler API. Every tenant-scoped call carries the validated tenant header. */
-function createGlozicClient(config) {
-	const base = new URL(config.glozicBaseUrl);
+/**
+ * HTTP client for one glozic environment's internal scheduler API (glozic-stagging or glozic-live-main).
+ * Every tenant-scoped call carries a tenant header validated against that environment's tenant rule.
+ */
+function createGlozicClient(env, config) {
+	const base = new URL(env.glozicBaseUrl);
 	const transport = base.protocol === 'https:' ? https : http;
 	const basePath = base.pathname.replace(/\/+$/, '');
 
 	function request(method, path, { tenant, body, headers = {}, timeoutMs = config.httpTimeoutMs } = {}) {
-		if (tenant !== undefined && !isDevTenant(tenant)) {
-			return Promise.reject(new GlozicError(`Refusing to call glozic with invalid tenant "${tenant}"`, { code: 'INVALID_TENANT' }));
+		if (tenant !== undefined && !env.isTenant(tenant)) {
+			return Promise.reject(new GlozicError(`Refusing to call ${env.label} with invalid tenant "${tenant}"`, { code: 'INVALID_TENANT' }));
 		}
 		const payload = body === undefined ? null : Buffer.from(JSON.stringify(body));
 		const requestHeaders = {
 			accept: 'application/json',
-			'x-internal-token': config.internalToken,
+			'x-internal-token': env.internalToken,
 			...headers,
 		};
 		if (tenant !== undefined) requestHeaders.tenant = tenant;
@@ -76,8 +77,8 @@ function createGlozicClient(config) {
 						const routePath = path.split('?')[0].replace(/\/executions\/[^/]+/, '/executions/:key');
 						const message = (data && data.message)
 							|| (res.statusCode === 404
-								? `glozic has no route ${method} ${routePath} (HTTP 404); glozic-stagging and Glacial-Island may be running different versions`
-								: `glozic responded with HTTP ${res.statusCode} for ${method} ${routePath}`);
+								? `${env.label} has no route ${method} ${routePath} (HTTP 404); ${env.label} and Glacial-Island may be running different versions`
+								: `${env.label} responded with HTTP ${res.statusCode} for ${method} ${routePath}`);
 						finish(reject, new GlozicError(String(message), { statusCode: res.statusCode }));
 						return;
 					}
@@ -107,7 +108,7 @@ function createGlozicClient(config) {
 		/** Registry recovery: the one internal call that is not tenant scoped. */
 		listTenants: async () => {
 			const data = await request('GET', '/api/internal/scheduler/tenants');
-			return (data.tenants || []).filter(isDevTenant);
+			return (data.tenants || []).filter(env.isTenant);
 		},
 
 		claimDue: async (tenant, { workerId, limit, leaseMs, graceMs }) => {
