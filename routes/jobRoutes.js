@@ -9,7 +9,6 @@ const {
 	emailQueue,
 	FLOW_QUEUE,
 	TASK_QUEUE,
-	connectQueue,
 } = require('../config/bull');
 const Auth = require("../services/authentication");
 const sample_flow_definition = require('../config/wf-definition-example-1.json');
@@ -135,37 +134,6 @@ module.exports = app => {
 		} catch (err) {
 			console.error("Cleanup Error:", err);
 			res.status(500).json({ status: false, message: err.message });
-		}
-	});
-
-	app.get('/purge-schedule', async function (req, res) {
-		try {
-			// 1. Define the specific queue causing the bloat
-			const scheduleQueueName = req.query.queue ? String(req.query.queue) : 'SCHEDULE@glozic.dev';
-			const scheduleQueue = connectQueue(scheduleQueueName);
-
-			// 2. More aggressive cleaning: 0ms grace period
-			// This removes ALL completed and failed jobs regardless of age
-			const cleanedCompleted = await scheduleQueue.clean(0, 'completed');
-			const cleanedFailed = await scheduleQueue.clean(0, 'failed');
-
-			// 3. Clear "Wait" and "Delayed" if needed (Caution: this stops pending jobs)
-			// const cleanedWaiting = await scheduleQueue.clean(0, 'wait');
-
-			res.json({
-				status: true,
-				queue: scheduleQueueName,
-				removed: {
-					completed: cleanedCompleted.length,
-					failed: cleanedFailed.length
-				}
-			});
-
-			// Close local instance to prevent memory leaks
-			await scheduleQueue.close();
-
-		} catch (err) {
-			res.status(500).json({ status: false, error: err.message });
 		}
 	});
 
