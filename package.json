@@ -6,11 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start1": "nf start",
-    "start": "node index.js",
+    "start": "node init && node index.js",
     "nodemon": "nodemon index.js"
   },
   "engines": {
-    "node": "22.x"
+    "node": "22.22.3"
   },
   "author": "",
   "license": "ISC",
