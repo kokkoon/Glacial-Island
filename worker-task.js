@@ -6,7 +6,6 @@ const { taskQueue, TASK_QUEUE } = require('./config/bull');
 const validEmail = /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
 const validPhone = /^\+?[1-9]\d{9,14}$/;
 
-
 const buildTaskEmailBody = (task) => {
   const apiBase = (keys.WorkflowApiUrl || '').replace(/\/$/, '');
   const jobId = task.instanceId || task.workflowJobId || '';
