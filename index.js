@@ -1,18 +1,20 @@
 //replaced server.js
 require('dotenv').config()
 
+
 const express = require("express");
 const app = express();
 const Bull = require('bull');
 const GUI = require('bull-arena');
 const keys = require('./config/keys');
-const { TASK_QUEUE, WORKFLOW_QUEUE } = require('./config/bull');
+const { TASK_QUEUE, WORKFLOW_QUEUE, EMAIL_QUEUE } = require('./config/bull');
 const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
 const cors = require('cors');
+const { startScheduler } = require('./services/scheduler');
 
-const { log } = console;
+const log = console.log;
 function proxiedLog(...args) {
 	const l1 = ((new Error('log')).stack.split('\n')[2] || '…')
 	const line = (l1.match(/[^\/||^\\]*(?=\))/) || ['not found'])[0];
@@ -21,14 +23,16 @@ function proxiedLog(...args) {
 console.info = proxiedLog;
 console.log = proxiedLog;
 app.use(cors())
-//const serviceWorker = require('./worker-service');
+
+
+
+// //const serviceWorker = require('./worker-service');
 const flowWorker = require('./worker-flow');
 const taskWorker = require('./worker-task');
-//const emailWorker = require('./worker-email');
+const emailWorker = require('./worker-email');
 
-// Arena only shows queues defined in config/bull.js (TASK + WORKFLOW).
-// Do not auto-discover Redis queues (avoids web-service-queue, SCHEDULE@*, etc.).
-const arenaQueues = [WORKFLOW_QUEUE, TASK_QUEUE].map(name => ({
+// Arena only shows queues defined in config/bull.js (TASK + WORKFLOW + EMAIL).
+const arenaQueues = [WORKFLOW_QUEUE, TASK_QUEUE, EMAIL_QUEUE].map(name => ({
 	name,
 	hostId: "flow",
 	url: keys.redisURL
@@ -89,11 +93,25 @@ app.get('/random-images', (req, res) => {
 
 });
 
+const scheduler = startScheduler(app);
 require('./routes/jobRoutes')(app);
 
 
 
 const PORT = process.env.PORT || '4000';
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
 	console.log(`Server is running on port ${PORT}`)
 })
+
+let shuttingDown = false;
+const shutdown = (signal) => {
+	if (shuttingDown) return;
+	shuttingDown = true;
+	console.log(`${signal} received, shutting down`);
+	server.close();
+	Promise.resolve(scheduler && scheduler.stop())
+		.catch((err) => console.error('Scheduler shutdown failed:', err.message))
+		.finally(() => process.exit(0));
+};
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
